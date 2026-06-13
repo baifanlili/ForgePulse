@@ -90,4 +90,5 @@ make up
 - [MVP 范围](docs/mvp-scope.md)
 - [部署](docs/deployment.md)
 - [项目结构](docs/project-structure.md)
+- [开发进度](docs/progress.md)
 - [GitHub 计划](docs/github-plan.md)

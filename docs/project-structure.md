@@ -19,6 +19,7 @@ ForgePulse/
 |   |-- deployment.md
 |   |-- github-plan.md
 |   |-- mvp-scope.md
+|   |-- progress.md
 |   |-- project-structure.md
 |   `-- technology-stack.md
 |-- edge-gateway/
