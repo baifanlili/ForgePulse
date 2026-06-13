@@ -1,6 +1,3 @@
-CREATE EXTENSION IF NOT EXISTS timescaledb;
-CREATE EXTENSION IF NOT EXISTS vector;
-
 CREATE TABLE IF NOT EXISTS devices (
     id BIGSERIAL PRIMARY KEY,
     device_code VARCHAR(64) NOT NULL UNIQUE,
@@ -21,5 +18,3 @@ CREATE TABLE IF NOT EXISTS telemetry_points (
     metric_value DOUBLE PRECISION NOT NULL,
     tags JSONB NOT NULL DEFAULT '{}'::jsonb
 );
-
-SELECT create_hypertable('telemetry_points', 'time', if_not_exists => TRUE);

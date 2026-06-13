@@ -15,6 +15,24 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
+The default local stack starts the lightweight MVP services:
+
+- Web
+- Platform API
+- Stream worker
+- Edge gateway
+- PostgreSQL
+- Redis
+- MQTT
+
+Kafka is kept behind the `streaming` profile for later data-streaming work:
+
+```bash
+docker compose --profile streaming up -d --build
+```
+
+The first runnable version uses `postgres:16-alpine` to keep local startup reliable. TimescaleDB and pgvector remain planned storage extensions for the analytics and AI knowledge-base phases.
+
 ## Stop
 
 ```bash
@@ -37,7 +55,7 @@ docker compose up -d --build
 | PostgreSQL | 5432 |
 | Redis | 6379 |
 | MQTT | 1883 |
-| Kafka | 9092 |
+| Kafka | 9092, when `streaming` profile is enabled |
 
 ## Deployment Notes
 
