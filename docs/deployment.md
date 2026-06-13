@@ -1,21 +1,21 @@
-# Deployment
+# 部署
 
-ForgePulse is designed for local one-command deployment with Docker Compose.
+ForgePulse 设计为基于 Docker Compose 的本地一键部署项目。
 
-## Prerequisites
+## 前置条件
 
 - Docker Desktop
 - Docker Compose
-- Optional: Git and GitHub CLI for publishing
+- 可选：用于发布的 Git 和 GitHub CLI
 
-## Start
+## 启动
 
 ```bash
 cp .env.example .env
 docker compose up -d --build
 ```
 
-The default local stack starts the lightweight MVP services:
+默认本地技术栈会启动轻量级 MVP 服务：
 
 - Web
 - Platform API
@@ -26,30 +26,30 @@ The default local stack starts the lightweight MVP services:
 - Redis
 - MQTT
 
-Kafka is kept behind the `streaming` profile for later data-streaming work:
+Kafka 暂时放在 `streaming` profile 下，供后续数据流工作使用：
 
 ```bash
 docker compose --profile streaming up -d --build
 ```
 
-The first runnable version uses `postgres:16-alpine` to keep local startup reliable. TimescaleDB and pgvector remain planned storage extensions for the analytics and AI knowledge-base phases.
+首个可运行版本使用 `postgres:16-alpine`，以保证本地启动更稳定。TimescaleDB 和 pgvector 仍作为分析与 AI 知识库阶段的计划存储扩展。
 
-## Stop
+## 停止
 
 ```bash
 docker compose down
 ```
 
-## Reset Data
+## 重置数据
 
 ```bash
 docker compose down -v
 docker compose up -d --build
 ```
 
-## Service Ports
+## 服务端口
 
-| Service | Port |
+| 服务 | 端口 |
 | --- | --- |
 | Web | 3000 |
 | API | 8000 |
@@ -57,11 +57,11 @@ docker compose up -d --build
 | pgAdmin | 5050 |
 | Redis | 6379 |
 | MQTT | 1883 |
-| Kafka | 9092, when `streaming` profile is enabled |
+| Kafka | 9092，启用 `streaming` profile 时可用 |
 
-## Database Access
+## 数据库访问
 
-PostgreSQL runs inside Docker and is exposed on localhost:
+PostgreSQL 在 Docker 中运行，并暴露到本机：
 
 ```text
 Host: localhost
@@ -71,20 +71,20 @@ User: forgepulse
 Password: forgepulse
 ```
 
-pgAdmin is available at:
+pgAdmin 可通过以下地址访问：
 
 ```text
 http://localhost:5050
 ```
 
-Default pgAdmin login:
+默认 pgAdmin 登录信息：
 
 ```text
 Email: admin@forgepulse.dev
 Password: forgepulse
 ```
 
-When registering the database server inside pgAdmin, use the Docker service name as the host:
+在 pgAdmin 内注册数据库服务器时，使用 Docker 服务名作为主机：
 
 ```text
 Host: postgres
@@ -94,14 +94,14 @@ User: forgepulse
 Password: forgepulse
 ```
 
-## Deployment Notes
+## 部署说明
 
-The initial deployment uses Docker Compose because it is easier to run and demo.
+初始部署使用 Docker Compose，因为它更容易运行和演示。
 
-The service boundaries are compatible with a later Kubernetes migration:
+服务边界兼容后续迁移到 Kubernetes：
 
-- `edge-gateway` can become a device-side or edge-node workload
-- `platform-api` can scale horizontally
-- `stream-worker` can scale by Kafka consumer group
-- `web` can be served by Nginx or object storage CDN
-- PostgreSQL, Redis, Kafka, and MQTT can be replaced by managed services
+- `edge-gateway` 可以变成设备侧或边缘节点工作负载
+- `platform-api` 可以水平扩展
+- `stream-worker` 可以通过 Kafka consumer group 扩展
+- `web` 可以由 Nginx 或对象存储 CDN 提供服务
+- PostgreSQL、Redis、Kafka 和 MQTT 可以替换为托管服务

@@ -1,6 +1,6 @@
-# Technology Stack
+# 技术栈
 
-## Edge Gateway
+## 边缘网关
 
 - C++20
 - CMake
@@ -11,16 +11,16 @@
 - yaml-cpp
 - GoogleTest
 
-Responsibilities:
+职责：
 
-- Device simulation
-- Heartbeat and telemetry generation
-- Semiconductor test data generation
-- MQTT publishing
-- Local validation
-- Reconnect and retry logic
+- 设备仿真
+- 心跳与遥测生成
+- 半导体测试数据生成
+- MQTT 发布
+- 本地校验
+- 重连与重试逻辑
 
-## Platform API
+## 平台 API
 
 - Python 3.11+
 - FastAPI
@@ -30,48 +30,48 @@ Responsibilities:
 - Redis client
 - OpenAPI
 
-Responsibilities:
+职责：
 
-- Device management
-- Alarm center
-- Semiconductor business APIs
-- Dashboard APIs
-- Knowledge base APIs
+- 设备管理
+- 告警中心
+- 半导体业务 API
+- 仪表盘 API
+- 知识库 API
 
-## Stream Worker
+## 流处理 Worker
 
 - Python 3.11+
 - paho-mqtt
-- aiokafka or confluent-kafka
+- aiokafka 或 confluent-kafka
 - pandas
 - numpy
 - scipy
 
-Responsibilities:
+职责：
 
-- MQTT consumption
-- Kafka publishing and consumption
-- Telemetry processing
-- Status aggregation
-- Alarm rule evaluation
-- Yield, Bin, and SPC calculations
+- MQTT 消费
+- Kafka 发布与消费
+- 遥测处理
+- 状态聚合
+- 告警规则评估
+- Yield、Bin 和 SPC 计算
 
-## AI Knowledge Layer
+## AI 知识层
 
 - LangChain
 - pgvector
-- OpenAI-compatible model API
-- Document loaders
-- RAG chains
+- OpenAI 兼容模型 API
+- 文档加载器
+- RAG 链
 
-Responsibilities:
+职责：
 
-- Industrial knowledge base indexing
-- Knowledge Q&A
-- Alarm explanation
-- Yield anomaly explanation
+- 工业知识库索引
+- 知识问答
+- 告警解释
+- 良率异常解释
 
-## Frontend
+## 前端
 
 - React
 - TypeScript
@@ -82,15 +82,15 @@ Responsibilities:
 - ECharts
 - React Router
 
-Responsibilities:
+职责：
 
-- Industrial dashboard
-- Device status monitoring
-- Alarm center
-- Semiconductor analytics pages
-- Knowledge assistant UI
+- 工业仪表盘
+- 设备状态监控
+- 告警中心
+- 半导体分析页面
+- 知识助手界面
 
-## Infrastructure
+## 基础设施
 
 - Docker Compose
 - PostgreSQL

@@ -1,36 +1,36 @@
-# GitHub Plan
+# GitHub 计划
 
-## Repository
+## 仓库
 
-Recommended repository name:
+推荐仓库名：
 
 ```text
 ForgePulse
 ```
 
-Recommended visibility while drafting:
+草稿阶段推荐可见性：
 
 ```text
 Private
 ```
 
-After the MVP can run end to end, the repository can be made public.
+当 MVP 可以端到端运行后，可以将仓库设为公开。
 
-## Initial Commit
+## 初始提交
 
-Suggested commit message:
+建议提交信息：
 
 ```text
 Initialize ForgePulse project structure
 ```
 
-## Suggested Repository Description
+## 建议仓库描述
 
 ```text
 Industrial equipment telemetry and AI-assisted semiconductor yield analytics platform.
 ```
 
-## Suggested Topics
+## 建议 Topics
 
 ```text
 industrial-iot
@@ -48,9 +48,9 @@ spc
 yield-analysis
 ```
 
-## Publish Commands
+## 发布命令
 
-After Git and GitHub CLI are installed and authenticated:
+安装并登录 Git 和 GitHub CLI 后：
 
 ```bash
 cd /d D:\ForgePulse
@@ -60,13 +60,13 @@ git commit -m "Initialize ForgePulse project structure"
 gh repo create ForgePulse --private --source=. --remote=origin --push
 ```
 
-Or run:
+或者运行：
 
 ```powershell
 .\scripts\publish-github.ps1
 ```
 
-If the repository already exists:
+如果仓库已经存在：
 
 ```bash
 cd /d D:\ForgePulse

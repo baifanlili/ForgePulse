@@ -1,69 +1,69 @@
-# MVP Scope
+# MVP 范围
 
-The MVP should prove a complete industrial data loop while keeping implementation controlled.
+MVP 应该在控制实现复杂度的前提下，验证一条完整的工业数据闭环。
 
-## In Scope
+## 范围内
 
-### Edge Gateway
+### 边缘网关
 
-- Generate semiconductor equipment heartbeat
-- Generate telemetry values such as temperature, voltage, pressure, and run state
-- Generate Lot, Wafer, Die, Bin, and Pass/Fail test data
-- Publish data to MQTT topics
+- 生成半导体设备心跳
+- 生成温度、电压、压力、运行状态等遥测值
+- 生成 Lot、Wafer、Die、Bin 和 Pass/Fail 测试数据
+- 将数据发布到 MQTT topic
 
-### Data Platform
+### 数据平台
 
-- Device list and device detail APIs
-- Telemetry ingestion pipeline
-- Event records
-- Alarm rule evaluation
-- Latest device status cache
-- Historical telemetry storage
+- 设备列表和设备详情 API
+- 遥测接入流水线
+- 事件记录
+- 告警规则评估
+- 最新设备状态缓存
+- 历史遥测存储
 
-### Semiconductor Analytics
+### 半导体分析
 
-- Lot list and detail
-- Wafer list and detail
-- Yield summary
-- Yield trend
-- Bin distribution
-- Basic SPC control chart
-- Abnormal Lot identification
+- Lot 列表和详情
+- Wafer 列表和详情
+- 良率汇总
+- 良率趋势
+- Bin 分布
+- 基础 SPC 控制图
+- 异常 Lot 识别
 
-### AI Knowledge
+### AI 知识
 
-- Upload or seed industrial knowledge documents
-- Chunk and embed documents
-- Store embeddings in pgvector
-- Knowledge Q&A
-- Alarm explanation
-- Yield anomaly summary
+- 上传或预置工业知识文档
+- 对文档进行切分和嵌入
+- 将 embedding 存储到 pgvector
+- 知识问答
+- 告警解释
+- 良率异常摘要
 
-### Frontend
+### 前端
 
-- Dashboard overview
-- Device list and detail
-- Alarm list and detail
-- Yield analysis page
-- Bin distribution page
-- SPC page
-- Knowledge assistant page
+- 仪表盘概览
+- 设备列表和详情
+- 告警列表和详情
+- 良率分析页面
+- Bin 分布页面
+- SPC 页面
+- 知识助手页面
 
-## Out of Scope for MVP
+## MVP 范围外
 
-- Real OPC UA or Modbus device integration
-- Complex permission system
-- Multi-tenant architecture
-- Kubernetes deployment
-- Full agent workflow automation
-- Robotics module
-- Production-grade high availability
+- 真实 OPC UA 或 Modbus 设备集成
+- 复杂权限系统
+- 多租户架构
+- Kubernetes 部署
+- 完整的 Agent 工作流自动化
+- 机器人模块
+- 生产级高可用
 
-## Success Criteria
+## 成功标准
 
-- The project starts with one command
-- The C++ gateway publishes simulated device data
-- The platform consumes and stores telemetry
-- The dashboard shows live status and alarms
-- Semiconductor analytics pages show meaningful data
-- AI knowledge Q&A returns source-grounded answers
+- 项目可以用一条命令启动
+- C++ 网关可以发布模拟设备数据
+- 平台可以消费并存储遥测数据
+- 仪表盘可以展示实时状态和告警
+- 半导体分析页面可以展示有意义的数据
+- AI 知识问答可以返回有来源依据的答案

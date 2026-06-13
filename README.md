@@ -1,93 +1,93 @@
 # ForgePulse
 
-ForgePulse is an industrial equipment data platform for semiconductor test scenarios.
+ForgePulse 是一个面向半导体测试场景的工业设备数据平台。
 
-The project focuses on equipment telemetry ingestion, real-time status monitoring, alarm lifecycle management, yield analysis, SPC analysis, and AI-assisted industrial knowledge retrieval.
+项目聚焦设备遥测接入、实时状态监控、告警生命周期管理、良率分析、SPC 分析，以及 AI 辅助的工业知识检索。
 
-## Positioning
+## 定位
 
-ForgePulse is designed as a transferable industrial data platform rather than a traditional admin system.
+ForgePulse 的目标是成为可迁移的工业数据平台，而不是传统后台管理系统。
 
-Core direction:
+核心方向：
 
-- C++ edge gateway for device simulation and telemetry publishing
-- Python platform services for data ingestion, processing, analytics, and AI
-- React dashboard for industrial monitoring and semiconductor analysis
-- MQTT and Kafka for equipment data flow
-- PostgreSQL, TimescaleDB, pgvector, and Redis for storage
+- 使用 C++ 边缘网关进行设备仿真与遥测发布
+- 使用 Python 平台服务完成数据接入、处理、分析与 AI 能力
+- 使用 React 仪表盘呈现工业监控与半导体分析
+- 使用 MQTT 和 Kafka 承载设备数据流
+- 使用 PostgreSQL、TimescaleDB、pgvector 和 Redis 进行存储
 
-## Architecture
+## 架构
 
 ```text
-Semiconductor equipment simulator
+半导体设备模拟器
         |
         v
-C++ Edge Gateway
+C++ 边缘网关
         |
         v
 MQTT / Kafka
         |
         v
-Python Platform API + Stream Worker
+Python 平台 API + 流处理 Worker
         |
         v
 PostgreSQL / TimescaleDB / pgvector / Redis
         |
         v
-React Industrial Dashboard
+React 工业仪表盘
 ```
 
-## Modules
+## 模块
 
 ```text
-edge-gateway/     C++ device simulator and edge gateway
-platform-api/     FastAPI platform API
-stream-worker/    Python data stream processor
-web/              React industrial dashboard
-deploy/           Docker, Nginx, PostgreSQL, MQTT configs
-docs/             Architecture and project documents
-packages/         Shared schemas and contracts
-scripts/          Development and deployment scripts
+edge-gateway/     C++ 设备模拟器与边缘网关
+platform-api/     FastAPI 平台 API
+stream-worker/    Python 数据流处理器
+web/              React 工业仪表盘
+deploy/           Docker、Nginx、PostgreSQL、MQTT 配置
+docs/             架构与项目文档
+packages/         共享 schema 与契约
+scripts/          开发与部署脚本
 ```
 
-## One-Command Deployment
+## 一键部署
 
-Copy environment variables:
+复制环境变量：
 
 ```bash
 cp .env.example .env
 ```
 
-Start all services:
+启动所有服务：
 
 ```bash
 docker compose up -d --build
 ```
 
-Or use Make:
+也可以使用 Make：
 
 ```bash
 make up
 ```
 
-## MVP Scope
+## MVP 范围
 
-The first version will focus on a complete industrial data loop:
+首个版本将聚焦一条完整的工业数据闭环：
 
-- Create and manage semiconductor equipment
-- Generate equipment heartbeat, telemetry, events, and test data from C++
-- Ingest data through MQTT and Kafka
-- Update real-time device status
-- Generate alarms from rules
-- Analyze Lot, Wafer, Yield, Bin, and SPC data
-- Provide industrial knowledge base Q&A with LangChain and pgvector
-- Show dashboard, device status, alarms, and yield analysis in React
+- 创建和管理半导体设备
+- 由 C++ 生成设备心跳、遥测、事件和测试数据
+- 通过 MQTT 和 Kafka 接入数据
+- 更新实时设备状态
+- 根据规则生成告警
+- 分析 Lot、Wafer、Yield、Bin 和 SPC 数据
+- 使用 LangChain 与 pgvector 提供工业知识库问答
+- 在 React 中展示仪表盘、设备状态、告警和良率分析
 
-## Documentation
+## 文档
 
-- [Architecture](docs/architecture.md)
-- [Technology Stack](docs/technology-stack.md)
-- [MVP Scope](docs/mvp-scope.md)
-- [Deployment](docs/deployment.md)
-- [Project Structure](docs/project-structure.md)
-- [GitHub Plan](docs/github-plan.md)
+- [架构](docs/architecture.md)
+- [技术栈](docs/technology-stack.md)
+- [MVP 范围](docs/mvp-scope.md)
+- [部署](docs/deployment.md)
+- [项目结构](docs/project-structure.md)
+- [GitHub 计划](docs/github-plan.md)
