@@ -4,6 +4,16 @@ ForgePulse 是一个面向半导体测试场景的工业设备数据平台。
 
 项目聚焦设备遥测接入、实时状态监控、告警生命周期管理、良率分析、SPC 分析，以及 AI 辅助的工业知识检索。
 
+## 在线 Demo
+
+前端静态演示版使用内置模拟数据，不依赖后端 API 或数据库：
+
+```text
+https://baifanlili.github.io/ForgePulse/
+```
+
+完整本地闭环请使用 Docker Compose 启动。
+
 ## 定位
 
 ForgePulse 的目标是成为可迁移的工业数据平台，而不是传统后台管理系统。
@@ -70,6 +80,8 @@ docker compose up -d --build
 make up
 ```
 
+`.env.example` 仅包含本地开发和演示用默认配置。公开部署时请复制为 `.env` 并替换数据库密码、API Key 等敏感配置，且不要提交 `.env`。
+
 ## MVP 范围
 
 首个版本将聚焦一条完整的工业数据闭环：
@@ -92,3 +104,7 @@ make up
 - [项目结构](docs/project-structure.md)
 - [开发进度](docs/progress.md)
 - [GitHub 计划](docs/github-plan.md)
+
+## 开源许可
+
+本项目使用 [MIT License](LICENSE) 开源。
