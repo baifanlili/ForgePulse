@@ -1,0 +1,15 @@
+[project]
+name = "forgepulse-stream-worker"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "paho-mqtt>=2.1.0",
+    "aiokafka>=0.10.0",
+    "pydantic>=2.7.0",
+    "sqlalchemy>=2.0.0",
+    "psycopg[binary]>=3.2.0",
+    "redis>=5.0.0",
+    "pandas>=2.2.0",
+    "numpy>=1.26.0",
+    "scipy>=1.13.0"
+]
