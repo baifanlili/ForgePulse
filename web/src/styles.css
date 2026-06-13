@@ -18,6 +18,25 @@ body {
     #eef2f7;
 }
 
+.sidebar {
+  min-height: 100vh;
+  background: #111827 !important;
+}
+
+.sidebar-brand {
+  height: 88px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.sidebar-title {
+  color: #f8fafc;
+  font-size: 18px;
+  font-weight: 700;
+}
+
 .topbar {
   height: auto;
   min-height: 88px;
@@ -26,8 +45,8 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  background: #111827;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border-bottom: 1px solid #dbe3ef;
 }
 
 .brand {
@@ -40,7 +59,7 @@ body {
 
 .topbar h3 {
   margin: 0;
-  color: #f8fafc;
+  color: #152238;
   line-height: 1.2;
 }
 
@@ -52,6 +71,17 @@ body {
 
 .stack {
   width: 100%;
+}
+
+.page-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.page-toolbar h3 {
+  margin: 0;
 }
 
 .loading {
@@ -83,6 +113,11 @@ body {
 
   .content {
     padding: 14px;
+  }
+
+  .page-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .chart {

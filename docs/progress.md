@@ -11,6 +11,7 @@
 - 已新增 `AGENTS.md`，约定文档和 commit message 默认使用简体中文。
 - 已完成第一版“数据库演示数据 -> Platform API -> React 仪表盘”的可视化闭环。
 - 已完成第一版“C++ edge-gateway -> MQTT -> stream-worker -> PostgreSQL”的实时遥测闭环。
+- 已开始按企业级真实项目结构拆分前后端模块，新增 `docs/engineering-architecture.md`。
 
 ## 已完成
 
@@ -48,6 +49,9 @@
 - 已新增 `docs/data-sources.md`，记录 SECOM、AI4I 2020、WM-811K 等候选公开数据集及许可证注意事项。
 - 已新增 `scripts/import-secom-demo.py`，可下载 UCI SECOM 真实半导体制造数据并导入 PostgreSQL。
 - 设备遥测接口已支持 `all_history=true`，便于查询 SECOM 等历史公开数据集。
+- `platform-api` 已拆分为 `core`、`api/router.py` 和多个 `api/routers/*` 模块，`main.py` 只保留应用工厂与路由挂载。
+- `web` 已拆分为 `app`、`features`、`shared` 三层，并接入页面路由。
+- 前端已新增设备详情页，可从仪表盘点击设备进入详情，查看设备画像、遥测趋势和设备告警。
 
 ## 当前代码状态
 
@@ -57,7 +61,7 @@
 - 当前使用 `psycopg` 直接连接 PostgreSQL，提供只读仪表盘和分析接口。
 - 已启用本地前端访问所需 CORS。
 - 已提供设备详情与设备级遥测时间序列查询，支持按指标、时间窗口、全历史模式和返回条数过滤。
-- 后续可在业务模型稳定后再拆分路由、服务层和 SQLAlchemy 模型。
+- 当前已完成 router 级拆分；后续可在业务模型稳定后继续增加 Pydantic schemas、repository、service 和测试层。
 
 ### stream-worker
 
@@ -78,7 +82,11 @@
 ### web
 
 - 入口文件：`web/src/main.tsx`
-- 当前为工业仪表盘首页，使用 Ant Design 和 ECharts。
+- 当前使用 `HashRouter`，包含运行总览和设备详情页面。
+- 工程结构已拆分为：
+  - `app/`：应用壳与路由
+  - `features/`：业务页面
+  - `shared/`：API 客户端、共享类型、图表、状态标签和格式化工具
 - 默认从 `http://localhost:8000` 读取 API，可通过 `VITE_API_BASE_URL` 覆盖。
 - 每 10 秒自动刷新仪表盘、设备状态和 SPC 数据。
 
@@ -93,8 +101,8 @@
 
 下一阶段优先增强实时闭环的可用性：
 
-1. 为 `web` 增加设备详情页，接入设备详情接口和时间序列查询接口。
-2. 为 `web` 增加告警详情页和手动刷新按钮。
+1. 为 `web` 增加告警详情页和告警列表页。
+2. 为前后端补充 Pydantic/TypeScript API schema 约束，减少隐式结构。
 3. 增加心跳超时规则，把长时间未上报的设备自动置为 `offline`。
 4. 将 worker 中的阈值规则抽成配置或独立规则类。
 5. 补充测试脚本，验证 API 查询、MQTT 消费和数据库写入。
@@ -114,10 +122,11 @@
 - MVP 先追求端到端可运行，再逐步增强真实流处理、分析和 AI 知识库能力。
 - 第一版演示数据使用合成数据，不引入外部开源数据集。
 - 实时遥测 topic 默认使用 `forgepulse/telemetry`。
+- 前端使用 `HashRouter`，优先兼容 GitHub Pages 和普通静态托管。
 
 ## 待确认
 
 - 是否引入 TimescaleDB 和 pgvector 镜像，还是先用普通 PostgreSQL 表完成 MVP。
 - 外部开源数据集的首个接入对象：AI4I 2020、SECOM 或 WM-811K 抽样数据。
-- 前端是否需要按页面拆分路由，还是短期继续保持单页仪表盘。
 - C++ edge 是否后续引入正式 MQTT C/C++ SDK，替换当前 `mosquitto_pub` 轻量发布方案。
+- 后端何时引入正式迁移体系 Alembic，以及是否把 `init.sql` 仅保留为本地 demo seed。

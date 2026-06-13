@@ -16,7 +16,9 @@ ForgePulse/
 |       `-- init.sql
 |-- docs/
 |   |-- architecture.md
+|   |-- data-sources.md
 |   |-- deployment.md
+|   |-- engineering-architecture.md
 |   |-- github-plan.md
 |   |-- mvp-scope.md
 |   |-- progress.md
@@ -35,9 +37,12 @@ ForgePulse/
 |   |-- pyproject.toml
 |   |-- requirements.txt
 |   `-- app/
+|       |-- api/
+|       |-- core/
 |       |-- __init__.py
 |       `-- main.py
 |-- scripts/
+|   |-- import-secom-demo.py
 |   `-- publish-github.ps1
 |-- stream-worker/
 |   |-- Dockerfile
@@ -53,6 +58,10 @@ ForgePulse/
     |-- tsconfig.json
     |-- vite.config.ts
     `-- src/
+        |-- app/
+        |-- features/
+        |-- shared/
+        |-- demoData.ts
         |-- main.tsx
         |-- styles.css
         `-- vite-env.d.ts
