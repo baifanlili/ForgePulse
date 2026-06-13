@@ -40,6 +40,7 @@
 - 前端仪表盘已增加 10 秒自动刷新。
 - 为 `web`、`edge-gateway`、`stream-worker` 补充 `.dockerignore`，减少 Docker 构建上下文。
 - 前端已支持 `VITE_DEMO_MODE=true` 静态演示模式，并新增 GitHub Pages 自动部署 workflow。
+- 项目准备改为公开开源仓库，已补充 MIT License、README 在线 Demo 入口和敏感配置提示。
 
 ## 当前代码状态
 
