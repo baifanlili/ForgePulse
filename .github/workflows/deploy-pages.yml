@@ -1,6 +1,9 @@
 name: 部署前端 Demo
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -42,11 +45,13 @@ jobs:
           VITE_BASE_PATH: "/${{ github.event.repository.name }}/"
 
       - name: 上传 Pages Artifact
+        if: github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
           path: web/dist
 
   deploy:
+    if: github.event_name == 'push'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
