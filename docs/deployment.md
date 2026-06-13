@@ -22,6 +22,7 @@ The default local stack starts the lightweight MVP services:
 - Stream worker
 - Edge gateway
 - PostgreSQL
+- pgAdmin
 - Redis
 - MQTT
 
@@ -53,9 +54,45 @@ docker compose up -d --build
 | Web | 3000 |
 | API | 8000 |
 | PostgreSQL | 5432 |
+| pgAdmin | 5050 |
 | Redis | 6379 |
 | MQTT | 1883 |
 | Kafka | 9092, when `streaming` profile is enabled |
+
+## Database Access
+
+PostgreSQL runs inside Docker and is exposed on localhost:
+
+```text
+Host: localhost
+Port: 5432
+Database: forgepulse
+User: forgepulse
+Password: forgepulse
+```
+
+pgAdmin is available at:
+
+```text
+http://localhost:5050
+```
+
+Default pgAdmin login:
+
+```text
+Email: admin@forgepulse.dev
+Password: forgepulse
+```
+
+When registering the database server inside pgAdmin, use the Docker service name as the host:
+
+```text
+Host: postgres
+Port: 5432
+Database: forgepulse
+User: forgepulse
+Password: forgepulse
+```
 
 ## Deployment Notes
 
