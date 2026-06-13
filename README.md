@@ -1,5 +1,8 @@
 # ForgePulse
 
+[![在线 Demo](https://img.shields.io/badge/在线%20Demo-GitHub%20Pages-2ea44f?logo=github)](https://baifanlili.github.io/ForgePulse/)
+[![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 ForgePulse 是一个面向半导体测试场景的工业设备数据平台。
 
 项目聚焦设备遥测接入、实时状态监控、告警生命周期管理、良率分析、SPC 分析，以及 AI 辅助的工业知识检索。
@@ -8,9 +11,7 @@ ForgePulse 是一个面向半导体测试场景的工业设备数据平台。
 
 前端静态演示版使用内置模拟数据，不依赖后端 API 或数据库：
 
-```text
-https://baifanlili.github.io/ForgePulse/
-```
+[打开 ForgePulse 在线 Demo](https://baifanlili.github.io/ForgePulse/)
 
 完整本地闭环请使用 Docker Compose 启动。
 
