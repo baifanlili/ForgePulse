@@ -28,7 +28,7 @@ services:
       - ./deploy/mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
 
   kafka:
-    image: apache/kafka:latest
+    image: docker.m.daocloud.io/apache/kafka-native:3.9.2
     container_name: forgepulse-kafka
     profiles:
       - streaming
