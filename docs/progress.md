@@ -32,6 +32,8 @@
   - `GET /api/alarms`
   - `GET /api/analytics/yield`
   - `GET /api/analytics/spc`
+  - `GET /api/devices/{device_code}`
+  - `GET /api/devices/{device_code}/telemetry`
 - 新增 stream worker 占位入口。
 - 新增 React/Vite 工业仪表盘页面，展示设备状态、活动告警、良率趋势、Bin 分布、SPC 控制图和最新遥测。
 - 新增 `web/package-lock.json`，用于锁定前端依赖版本。
@@ -42,6 +44,10 @@
 - 前端已支持 `VITE_DEMO_MODE=true` 静态演示模式，并新增 GitHub Pages 自动部署 workflow。
 - 项目准备改为公开开源仓库，已补充 MIT License、README 在线 Demo 入口和敏感配置提示。
 - 已为 `main` 分支准备保护规则：PR 至少 1 个批准、`build` 检查通过、禁止强推和删除。
+- `platform-api` 已增加设备详情接口和设备遥测时间序列查询接口，为前端设备详情页做准备。
+- 已新增 `docs/data-sources.md`，记录 SECOM、AI4I 2020、WM-811K 等候选公开数据集及许可证注意事项。
+- 已新增 `scripts/import-secom-demo.py`，可下载 UCI SECOM 真实半导体制造数据并导入 PostgreSQL。
+- 设备遥测接口已支持 `all_history=true`，便于查询 SECOM 等历史公开数据集。
 
 ## 当前代码状态
 
@@ -50,6 +56,7 @@
 - 入口文件：`platform-api/app/main.py`
 - 当前使用 `psycopg` 直接连接 PostgreSQL，提供只读仪表盘和分析接口。
 - 已启用本地前端访问所需 CORS。
+- 已提供设备详情与设备级遥测时间序列查询，支持按指标、时间窗口、全历史模式和返回条数过滤。
 - 后续可在业务模型稳定后再拆分路由、服务层和 SQLAlchemy 模型。
 
 ### stream-worker
@@ -86,8 +93,8 @@
 
 下一阶段优先增强实时闭环的可用性：
 
-1. 为 `platform-api` 增加设备详情接口和时间序列查询接口。
-2. 为 `web` 增加设备详情页、告警详情页和手动刷新按钮。
+1. 为 `web` 增加设备详情页，接入设备详情接口和时间序列查询接口。
+2. 为 `web` 增加告警详情页和手动刷新按钮。
 3. 增加心跳超时规则，把长时间未上报的设备自动置为 `offline`。
 4. 将 worker 中的阈值规则抽成配置或独立规则类。
 5. 补充测试脚本，验证 API 查询、MQTT 消费和数据库写入。
@@ -97,6 +104,7 @@
 - 可以使用公开数据或开源样例数据辅助构造演示数据，但必须记录来源和用途。
 - 对半导体制造数据，优先使用合成数据或公开可用数据集，避免引入来源不清的数据。
 - 如使用外部数据，应在相关文档中注明链接、许可证或使用条件。
+- 原始大文件不提交到 Git，优先通过导入脚本从本地文件或官方下载源导入。
 
 ## 当前关键决策
 
@@ -110,6 +118,6 @@
 ## 待确认
 
 - 是否引入 TimescaleDB 和 pgvector 镜像，还是先用普通 PostgreSQL 表完成 MVP。
-- 外部开源数据集的选择范围和许可证要求。
+- 外部开源数据集的首个接入对象：AI4I 2020、SECOM 或 WM-811K 抽样数据。
 - 前端是否需要按页面拆分路由，还是短期继续保持单页仪表盘。
 - C++ edge 是否后续引入正式 MQTT C/C++ SDK，替换当前 `mosquitto_pub` 轻量发布方案。
