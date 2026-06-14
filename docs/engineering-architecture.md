@@ -19,7 +19,8 @@ platform-api/app/
         |-- dashboard.py    运行总览
         |-- devices.py      设备与遥测查询
         |-- alarms.py       告警查询
-        `-- analytics.py    良率与 SPC 分析
+        |-- analytics.py    良率与 SPC 分析
+        `-- system.py       系统运营与数据摄取概览
 ```
 
 当前阶段仍使用 `psycopg` 直接查询，原因是表结构和业务边界还在快速迭代。后续当模型稳定后，可以增加：
@@ -42,7 +43,9 @@ web/src/
 |   `-- AppShell.tsx        应用布局与导航
 |-- features/
 |   |-- dashboard/          运行总览页面
-|   `-- devices/            设备详情页面
+|   |-- devices/            设备详情页面
+|   |-- alarms/             告警中心页面
+|   `-- system/             系统运营页面
 |-- shared/
 |   |-- api/                API 客户端
 |   |-- charts/             通用图表组件
@@ -75,6 +78,33 @@ PostgreSQL seed / import scripts
   -> platform-api analytics endpoints
   -> ECharts dashboard
 ```
+
+当前运营观测链路：
+
+```text
+PostgreSQL 设备、告警和遥测表
+  -> platform-api system endpoint
+  -> web 系统运营页面
+```
+
+## C++ 边缘网关
+
+`edge-gateway` 当前保持轻量 C++20 结构，先服务端到端演示和本地部署：
+
+```text
+edge-gateway/
+|-- include/forgepulse/
+|   |-- config.hpp          环境配置读取
+|   |-- mqtt_publisher.hpp  MQTT 发布器接口
+|   `-- telemetry.hpp       设备画像与遥测 payload 生成
+`-- src/
+    |-- config.cpp
+    |-- main.cpp            进程编排与发布循环
+    |-- mqtt_publisher.cpp
+    `-- telemetry.cpp
+```
+
+当前发布器仍通过容器内 `mosquitto_pub` 调用 MQTT，优点是镜像小、依赖少、便于快速验证。后续需要接入真实设备或更高可靠性时，再替换为正式 MQTT C/C++ SDK，并补充连接重试、QoS、离线缓存和本地采集适配层。
 
 ## 近期演进原则
 

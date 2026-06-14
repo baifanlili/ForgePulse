@@ -12,6 +12,8 @@
 - 已完成第一版“数据库演示数据 -> Platform API -> React 仪表盘”的可视化闭环。
 - 已完成第一版“C++ edge-gateway -> MQTT -> stream-worker -> PostgreSQL”的实时遥测闭环。
 - 已开始按企业级真实项目结构拆分前后端模块，新增 `docs/engineering-architecture.md`。
+- 已新增系统运营总览，开始覆盖服务健康、数据摄取延迟和核心表数据量。
+- 已开始整理 C++ 边缘网关工程结构，将配置、遥测生成和 MQTT 发布从 `main.cpp` 拆出。
 
 ## 已完成
 
@@ -35,10 +37,12 @@
   - `GET /api/analytics/spc`
   - `GET /api/devices/{device_code}`
   - `GET /api/devices/{device_code}/telemetry`
+  - `GET /api/system/overview`
 - 新增 stream worker 占位入口。
 - 新增 React/Vite 工业仪表盘页面，展示设备状态、活动告警、良率趋势、Bin 分布、SPC 控制图和最新遥测。
 - 新增 `web/package-lock.json`，用于锁定前端依赖版本。
 - `edge-gateway` 已可生成多设备模拟遥测 JSON，并发布到 MQTT topic `forgepulse/telemetry`。
+- `edge-gateway` 已拆分为配置、遥测模型和 MQTT 发布器模块，保留轻量 `mosquitto_pub` 发布方案。
 - `stream-worker` 已可订阅 MQTT、写入 `telemetry_points`、更新 `devices.last_heartbeat_at`，并根据温度/压力阈值维护实时告警。
 - 前端仪表盘已增加 10 秒自动刷新。
 - 为 `web`、`edge-gateway`、`stream-worker` 补充 `.dockerignore`，减少 Docker 构建上下文。
@@ -54,6 +58,7 @@
 - 前端已新增设备详情页，可从仪表盘点击设备进入详情，查看设备画像、遥测趋势和设备告警。
 - 已新增根目录 `DESIGN.md`，约定 ForgePulse 的工业数据平台视觉语言、布局模式、组件规范和 AI 协作提示。
 - 已新增企业级告警中心：支持告警列表过滤、详情抽屉、确认、关闭和处理轨迹。
+- 已新增系统运营总览页面：展示 API、PostgreSQL、stream-worker、edge-gateway 的运行推断状态，以及遥测摄取、指标分布和核心表数据量。
 
 ## 当前代码状态
 
@@ -65,6 +70,7 @@
 - 已提供设备详情与设备级遥测时间序列查询，支持按指标、时间窗口、全历史模式和返回条数过滤。
 - 当前已完成 router 级拆分；后续可在业务模型稳定后继续增加 Pydantic schemas、repository、service 和测试层。
 - 告警 API 已支持列表过滤、详情查询、确认和关闭动作，并记录 `alarm_events` 审计轨迹。
+- 系统运营 API 已提供 `/api/system/overview`，用于汇总服务状态、设备/告警统计、最新遥测延迟、近 15 分钟摄取分布和核心表数据量。
 
 ### stream-worker
 
@@ -78,21 +84,27 @@
 ### edge-gateway
 
 - 入口文件：`edge-gateway/src/main.cpp`
+- 配置模块：`edge-gateway/src/config.cpp`
+- 遥测模块：`edge-gateway/src/telemetry.cpp`
+- MQTT 发布模块：`edge-gateway/src/mqtt_publisher.cpp`
 - 当前生成 `ETCH-01`、`CVD-02`、`PHOTO-03`、`TEST-04` 的模拟遥测。
 - 运行容器中使用 `mosquitto_pub` 发布 MQTT 消息。
 - MQTT 地址通过 `MQTT_HOST`、`MQTT_PORT`、`MQTT_TELEMETRY_TOPIC` 环境变量配置。
+- 发布间隔可通过 `EDGE_PUBLISH_INTERVAL_SECONDS` 配置，默认 5 秒。
 
 ### web
 
 - 入口文件：`web/src/main.tsx`
-- 当前使用 `HashRouter`，包含运行总览和设备详情页面。
+- 当前使用 `HashRouter`，包含运行总览、设备详情、告警中心和系统运营页面。
 - 已新增告警中心页面，侧边栏可进入 `/alarms`。
+- 已新增系统运营页面，侧边栏可进入 `/system`。
 - 工程结构已拆分为：
   - `app/`：应用壳与路由
   - `features/`：业务页面
   - `shared/`：API 客户端、共享类型、图表、状态标签和格式化工具
 - 默认从 `http://localhost:8000` 读取 API，可通过 `VITE_API_BASE_URL` 覆盖。
 - 每 10 秒自动刷新仪表盘、设备状态和 SPC 数据。
+- 系统运营页面每 15 秒自动刷新服务状态和摄取概览。
 
 ### 数据库
 
@@ -110,7 +122,8 @@
 2. 增加用户、角色、权限和操作审计，为告警动作接入真实身份。
 3. 增加心跳超时规则，把长时间未上报的设备自动置为 `offline`。
 4. 将 worker 中的阈值规则抽成配置或独立规则类。
-5. 补充测试脚本，验证 API 查询、MQTT 消费和数据库写入。
+5. 将系统运营页的服务状态从“数据推断”升级为真实健康探针和 worker 心跳表。
+6. 补充测试脚本，验证 API 查询、MQTT 消费和数据库写入。
 
 ## 数据来源约定
 

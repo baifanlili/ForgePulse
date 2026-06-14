@@ -28,8 +28,16 @@ ForgePulse/
 |-- edge-gateway/
 |   |-- CMakeLists.txt
 |   |-- Dockerfile
+|   |-- include/
+|   |   `-- forgepulse/
+|   |       |-- config.hpp
+|   |       |-- mqtt_publisher.hpp
+|   |       `-- telemetry.hpp
 |   `-- src/
-|       `-- main.cpp
+|       |-- config.cpp
+|       |-- mqtt_publisher.cpp
+|       |-- main.cpp
+|       `-- telemetry.cpp
 |-- packages/
 |   `-- schemas/
 |       `-- telemetry.schema.json
@@ -67,6 +75,11 @@ ForgePulse/
         |-- styles.css
         `-- vite-env.d.ts
 ```
+
+主要业务模块约定：
+
+- `platform-api/app/api/routers/`：按领域拆分 API，目前包含健康检查、运行总览、设备、告警、分析和系统运营。
+- `web/src/features/`：按页面和业务能力拆分前端特性，目前包含运行总览、设备详情、告警中心和系统运营。
 
 ## 设计原则
 

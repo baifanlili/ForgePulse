@@ -6,6 +6,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(forgepulse-edge-gateway src/main.cpp)
+add_executable(
+    forgepulse-edge-gateway
+    src/config.cpp
+    src/main.cpp
+    src/mqtt_publisher.cpp
+    src/telemetry.cpp
+)
 
 target_include_directories(forgepulse-edge-gateway PRIVATE include)
