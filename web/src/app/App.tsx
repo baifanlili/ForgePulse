@@ -4,6 +4,7 @@ import { AppShell } from "./AppShell";
 import { AlarmCenterPage } from "../features/alarms/AlarmCenterPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { DeviceDetailPage } from "../features/devices/DeviceDetailPage";
+import { SystemOverviewPage } from "../features/system/SystemOverviewPage";
 
 export function App() {
   return (
@@ -21,6 +22,7 @@ export function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/alarms" element={<AlarmCenterPage />} />
+          <Route path="/system" element={<SystemOverviewPage />} />
           <Route path="/devices/:deviceCode" element={<DeviceDetailPage />} />
         </Route>
       </Routes>

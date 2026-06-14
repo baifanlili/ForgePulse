@@ -104,3 +104,38 @@ export type DeviceTelemetry = {
   metrics: string[];
   points: MetricPoint[];
 };
+
+export type SystemServiceStatus = {
+  name: string;
+  status: "ok" | "stale" | "no_data" | "error";
+  detail: string;
+};
+
+export type SystemOverview = {
+  services: SystemServiceStatus[];
+  summary: {
+    device_count: number;
+    running_count: number;
+    warning_count: number;
+    offline_count: number;
+    active_alarm_count: number;
+    acknowledged_alarm_count: number;
+    cleared_alarm_count: number;
+    telemetry_count: number;
+    latest_telemetry_at: string | null;
+    telemetry_lag_seconds: number | null;
+  };
+  recent_device_ingestion: Array<{
+    device_code: string;
+    latest_time: string;
+    point_count: number;
+  }>;
+  metric_ingestion: Array<{
+    metric_name: string;
+    point_count: number;
+  }>;
+  table_counts: Array<{
+    table_name: string;
+    row_count: number;
+  }>;
+};

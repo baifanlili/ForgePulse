@@ -1,5 +1,5 @@
 import { demoDashboard, demoDevices, demoSpc } from "../../demoData";
-import type { Alarm, AlarmDetail, AlarmStatus, DashboardData, Device, DeviceDetail, DeviceTelemetry, SpcPoint } from "../types";
+import type { Alarm, AlarmDetail, AlarmStatus, DashboardData, Device, DeviceDetail, DeviceTelemetry, SpcPoint, SystemOverview } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
@@ -76,6 +76,49 @@ export const api = {
       return [...demoSpc] as unknown as SpcPoint[];
     }
     return request<SpcPoint[]>("/api/analytics/spc");
+  },
+
+  async systemOverview(): Promise<SystemOverview> {
+    if (DEMO_MODE) {
+      return {
+        services: [
+          { name: "platform-api", status: "ok", detail: "静态 Demo 模式" },
+          { name: "postgres", status: "ok", detail: "使用内置演示数据" },
+          { name: "stream-worker", status: "stale", detail: "静态 Demo 不连接实时 worker" },
+          { name: "edge-gateway", status: "stale", detail: "静态 Demo 不连接边缘网关" },
+        ],
+        summary: {
+          device_count: 5,
+          running_count: 3,
+          warning_count: 1,
+          offline_count: 1,
+          active_alarm_count: 2,
+          acknowledged_alarm_count: 1,
+          cleared_alarm_count: 0,
+          telemetry_count: 4280,
+          latest_telemetry_at: new Date().toISOString(),
+          telemetry_lag_seconds: 12,
+        },
+        recent_device_ingestion: [
+          { device_code: "ETCH-01", latest_time: new Date().toISOString(), point_count: 240 },
+          { device_code: "CVD-02", latest_time: new Date().toISOString(), point_count: 238 },
+          { device_code: "TEST-04", latest_time: new Date().toISOString(), point_count: 236 },
+        ],
+        metric_ingestion: [
+          { metric_name: "temperature", point_count: 320 },
+          { metric_name: "pressure", point_count: 320 },
+          { metric_name: "voltage", point_count: 320 },
+          { metric_name: "yield_rate", point_count: 320 },
+        ],
+        table_counts: [
+          { table_name: "devices", row_count: 5 },
+          { table_name: "telemetry_points", row_count: 4280 },
+          { table_name: "alarms", row_count: 8 },
+          { table_name: "alarm_events", row_count: 16 },
+        ],
+      };
+    }
+    return request<SystemOverview>("/api/system/overview");
   },
 
   async alarms(filters: { status?: AlarmStatus | "all"; severity?: string; deviceCode?: string } = {}): Promise<Alarm[]> {
