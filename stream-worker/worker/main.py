@@ -65,30 +65,53 @@ def upsert_alarm(cur: psycopg.Cursor[Any], device_code: str, metric_name: str, v
                 description,
                 status,
                 started_at,
-                cleared_at
+                acknowledged_at,
+                acknowledged_by,
+                cleared_at,
+                cleared_by
             )
-            VALUES (%s, %s, %s, %s, %s, 'active', %s, NULL)
+            VALUES (%s, %s, %s, %s, %s, 'active', %s, NULL, NULL, NULL, NULL)
             ON CONFLICT (alarm_code) DO UPDATE SET
                 severity = EXCLUDED.severity,
                 title = EXCLUDED.title,
                 description = EXCLUDED.description,
                 status = 'active',
                 started_at = COALESCE(alarms.started_at, EXCLUDED.started_at),
-                cleared_at = NULL
+                acknowledged_at = NULL,
+                acknowledged_by = NULL,
+                cleared_at = NULL,
+                cleared_by = NULL
             """,
             (alarm_code, device_code, "warning", title, description, timestamp),
+        )
+        cur.execute(
+            """
+            INSERT INTO alarm_events (alarm_code, event_type, operator, note, created_at)
+            VALUES (%s, 'created', 'system', %s, %s)
+            """,
+            (alarm_code, f"{metric_name}={value:.2f} 超过阈值 {limit:.2f}", timestamp),
         )
     else:
         cur.execute(
             """
             UPDATE alarms
             SET status = 'cleared',
-                cleared_at = %s
+                cleared_at = %s,
+                cleared_by = 'system'
             WHERE alarm_code = %s
-              AND status = 'active'
+              AND status IN ('active', 'acknowledged')
+            RETURNING alarm_code
             """,
             (timestamp, alarm_code),
         )
+        if cur.fetchone() is not None:
+            cur.execute(
+                """
+                INSERT INTO alarm_events (alarm_code, event_type, operator, note, created_at)
+                VALUES (%s, 'cleared', 'system', %s, %s)
+                """,
+                (alarm_code, f"{metric_name}={value:.2f} 已恢复到阈值 {limit:.2f} 以下", timestamp),
+            )
 
 
 def persist_message(conn: psycopg.Connection[Any], message: dict[str, Any]) -> None:

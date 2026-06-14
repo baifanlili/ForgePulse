@@ -28,7 +28,19 @@ CREATE TABLE IF NOT EXISTS alarms (
     description TEXT NOT NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'active',
     started_at TIMESTAMPTZ NOT NULL,
-    cleared_at TIMESTAMPTZ
+    acknowledged_at TIMESTAMPTZ,
+    acknowledged_by VARCHAR(128),
+    cleared_at TIMESTAMPTZ,
+    cleared_by VARCHAR(128)
+);
+
+CREATE TABLE IF NOT EXISTS alarm_events (
+    id BIGSERIAL PRIMARY KEY,
+    alarm_code VARCHAR(64) NOT NULL,
+    event_type VARCHAR(32) NOT NULL,
+    operator VARCHAR(128) NOT NULL DEFAULT 'system',
+    note TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS lots (
@@ -81,8 +93,16 @@ CREATE INDEX IF NOT EXISTS idx_telemetry_points_device_time
 CREATE INDEX IF NOT EXISTS idx_alarms_status_started
     ON alarms (status, started_at DESC);
 
+CREATE INDEX IF NOT EXISTS idx_alarm_events_alarm_created
+    ON alarm_events (alarm_code, created_at DESC);
+
 CREATE INDEX IF NOT EXISTS idx_wafer_yields_lot
     ON wafer_yields (lot_code, wafer_id);
+
+ALTER TABLE alarms
+    ADD COLUMN IF NOT EXISTS acknowledged_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS acknowledged_by VARCHAR(128),
+    ADD COLUMN IF NOT EXISTS cleared_by VARCHAR(128);
 
 INSERT INTO devices (device_code, device_name, device_type, area, line, status, last_heartbeat_at)
 VALUES
@@ -115,12 +135,24 @@ VALUES
     (NOW() - INTERVAL '2 minutes', 'CVD-02', 'pressure', 2.6, '{"unit":"kpa"}'),
     (NOW() - INTERVAL '1 minutes', 'CVD-02', 'pressure', 2.5, '{"unit":"kpa"}');
 
-INSERT INTO alarms (alarm_code, device_code, severity, title, description, status, started_at, cleared_at)
+INSERT INTO alarms (
+    alarm_code,
+    device_code,
+    severity,
+    title,
+    description,
+    status,
+    started_at,
+    acknowledged_at,
+    acknowledged_by,
+    cleared_at,
+    cleared_by
+)
 VALUES
-    ('ALM-20260613-001', 'PHOTO-03', 'warning', '心跳延迟', '设备心跳超过 120 秒未刷新，建议检查链路状态。', 'active', NOW() - INTERVAL '7 minutes', NULL),
-    ('ALM-20260613-002', 'ETCH-01', 'critical', '腔体温度偏高', '刻蚀腔体温度连续 3 个采样点高于控制上限。', 'active', NOW() - INTERVAL '11 minutes', NULL),
-    ('ALM-20260613-003', 'PACK-05', 'warning', '设备离线', '封装检测设备离线超过 30 分钟。', 'active', NOW() - INTERVAL '35 minutes', NULL),
-    ('ALM-20260613-004', 'TEST-04', 'info', '良率恢复', '最近一个 Lot 良率回到目标线以上。', 'cleared', NOW() - INTERVAL '2 hours', NOW() - INTERVAL '84 minutes')
+    ('ALM-20260613-001', 'PHOTO-03', 'warning', '心跳延迟', '设备心跳超过 120 秒未刷新，建议检查链路状态。', 'active', NOW() - INTERVAL '7 minutes', NULL, NULL, NULL, NULL),
+    ('ALM-20260613-002', 'ETCH-01', 'critical', '腔体温度偏高', '刻蚀腔体温度连续 3 个采样点高于控制上限。', 'active', NOW() - INTERVAL '11 minutes', NULL, NULL, NULL, NULL),
+    ('ALM-20260613-003', 'PACK-05', 'warning', '设备离线', '封装检测设备离线超过 30 分钟。', 'acknowledged', NOW() - INTERVAL '35 minutes', NOW() - INTERVAL '28 minutes', 'shift-lead', NULL, NULL),
+    ('ALM-20260613-004', 'TEST-04', 'info', '良率恢复', '最近一个 Lot 良率回到目标线以上。', 'cleared', NOW() - INTERVAL '2 hours', NOW() - INTERVAL '110 minutes', 'qa-engineer', NOW() - INTERVAL '84 minutes', 'qa-engineer')
 ON CONFLICT (alarm_code) DO UPDATE SET
     device_code = EXCLUDED.device_code,
     severity = EXCLUDED.severity,
@@ -128,7 +160,21 @@ ON CONFLICT (alarm_code) DO UPDATE SET
     description = EXCLUDED.description,
     status = EXCLUDED.status,
     started_at = EXCLUDED.started_at,
-    cleared_at = EXCLUDED.cleared_at;
+    acknowledged_at = EXCLUDED.acknowledged_at,
+    acknowledged_by = EXCLUDED.acknowledged_by,
+    cleared_at = EXCLUDED.cleared_at,
+    cleared_by = EXCLUDED.cleared_by;
+
+INSERT INTO alarm_events (alarm_code, event_type, operator, note, created_at)
+VALUES
+    ('ALM-20260613-001', 'created', 'system', '心跳监控规则触发。', NOW() - INTERVAL '7 minutes'),
+    ('ALM-20260613-002', 'created', 'system', '温度阈值规则触发。', NOW() - INTERVAL '11 minutes'),
+    ('ALM-20260613-003', 'created', 'system', '设备离线规则触发。', NOW() - INTERVAL '35 minutes'),
+    ('ALM-20260613-003', 'acknowledged', 'shift-lead', '现场已派人检查封装检测设备。', NOW() - INTERVAL '28 minutes'),
+    ('ALM-20260613-004', 'created', 'system', '良率恢复事件生成。', NOW() - INTERVAL '2 hours'),
+    ('ALM-20260613-004', 'acknowledged', 'qa-engineer', '确认恢复趋势有效。', NOW() - INTERVAL '110 minutes'),
+    ('ALM-20260613-004', 'cleared', 'qa-engineer', 'Lot 复测通过，关闭告警。', NOW() - INTERVAL '84 minutes')
+ON CONFLICT DO NOTHING;
 
 INSERT INTO lots (lot_code, product_code, route_name, started_at, completed_at, wafer_count, total_die, pass_die, fail_die, yield_rate)
 VALUES

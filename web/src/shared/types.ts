@@ -1,6 +1,6 @@
 export type DeviceStatus = "running" | "warning" | "offline";
 export type AlarmSeverity = "critical" | "warning" | "info";
-export type AlarmStatus = "active" | "cleared";
+export type AlarmStatus = "active" | "acknowledged" | "cleared";
 
 export type Device = {
   device_code: string;
@@ -22,7 +22,22 @@ export type Alarm = {
   description?: string;
   status: AlarmStatus;
   started_at: string;
+  acknowledged_at?: string | null;
+  acknowledged_by?: string | null;
   cleared_at?: string | null;
+  cleared_by?: string | null;
+};
+
+export type AlarmEvent = {
+  event_type: string;
+  operator: string;
+  note?: string | null;
+  created_at: string;
+};
+
+export type AlarmDetail = {
+  alarm: Alarm;
+  events: AlarmEvent[];
 };
 
 export type LotYield = {

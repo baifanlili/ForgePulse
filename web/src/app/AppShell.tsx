@@ -1,4 +1,4 @@
-import { DashboardOutlined, DeploymentUnitOutlined } from "@ant-design/icons";
+import { AlertOutlined, DashboardOutlined, DeploymentUnitOutlined } from "@ant-design/icons";
 import { Layout, Menu, Space, Tag, Typography } from "antd";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
@@ -23,6 +23,7 @@ export function AppShell() {
           selectedKeys={[selectedKey]}
           items={[
             { key: "/dashboard", icon: <DashboardOutlined />, label: "运行总览" },
+            { key: "/alarms", icon: <AlertOutlined />, label: "告警中心" },
             { key: "devices", icon: <DeploymentUnitOutlined />, label: "设备监控", disabled: true },
           ]}
           onClick={(item) => navigate(item.key)}

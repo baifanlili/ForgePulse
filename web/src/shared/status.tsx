@@ -28,5 +28,10 @@ export function AlarmSeverityTag({ severity }: { severity: AlarmSeverity }) {
 }
 
 export function AlarmStatusTag({ status }: { status: AlarmStatus }) {
-  return <Tag color={status === "active" ? "red" : "green"}>{status === "active" ? "处理中" : "已恢复"}</Tag>;
+  const config: Record<AlarmStatus, { color: string; label: string }> = {
+    active: { color: "red", label: "待处理" },
+    acknowledged: { color: "gold", label: "已确认" },
+    cleared: { color: "green", label: "已关闭" },
+  };
+  return <Tag color={config[status].color}>{config[status].label}</Tag>;
 }

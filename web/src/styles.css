@@ -84,6 +84,11 @@ body {
   margin: 0;
 }
 
+.table-link-button {
+  height: auto;
+  padding: 0;
+}
+
 .loading {
   min-height: 420px;
   display: grid;

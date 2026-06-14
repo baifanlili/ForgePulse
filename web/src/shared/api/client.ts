@@ -1,11 +1,14 @@
 import { demoDashboard, demoDevices, demoSpc } from "../../demoData";
-import type { DashboardData, Device, DeviceDetail, DeviceTelemetry, SpcPoint } from "../types";
+import type { Alarm, AlarmDetail, AlarmStatus, DashboardData, Device, DeviceDetail, DeviceTelemetry, SpcPoint } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
 
-async function request<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`);
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    ...init,
+  });
   if (!response.ok) {
     throw new Error(`API 请求失败：${path}`);
   }
@@ -73,5 +76,65 @@ export const api = {
       return [...demoSpc] as unknown as SpcPoint[];
     }
     return request<SpcPoint[]>("/api/analytics/spc");
+  },
+
+  async alarms(filters: { status?: AlarmStatus | "all"; severity?: string; deviceCode?: string } = {}): Promise<Alarm[]> {
+    if (DEMO_MODE) {
+      const dashboard = demoDashboard as unknown as DashboardData;
+      return dashboard.recent_alarms.filter((alarm) => {
+        if (filters.status && filters.status !== "all" && alarm.status !== filters.status) {
+          return false;
+        }
+        if (filters.severity && alarm.severity !== filters.severity) {
+          return false;
+        }
+        if (filters.deviceCode && alarm.device_code !== filters.deviceCode) {
+          return false;
+        }
+        return true;
+      });
+    }
+    const params = new URLSearchParams({ limit: "100" });
+    if (filters.status && filters.status !== "all") {
+      params.set("status", filters.status);
+    }
+    if (filters.severity) {
+      params.set("severity", filters.severity);
+    }
+    if (filters.deviceCode) {
+      params.set("device_code", filters.deviceCode);
+    }
+    return request<Alarm[]>(`/api/alarms?${params.toString()}`);
+  },
+
+  async alarmDetail(alarmCode: string): Promise<AlarmDetail> {
+    if (DEMO_MODE) {
+      const dashboard = demoDashboard as unknown as DashboardData;
+      const alarm = dashboard.recent_alarms.find((item) => item.alarm_code === alarmCode);
+      if (!alarm) {
+        throw new Error("告警不存在");
+      }
+      return {
+        alarm,
+        events: [
+          { event_type: "created", operator: "system", note: "演示告警由规则触发。", created_at: alarm.started_at },
+        ],
+      };
+    }
+    return request<AlarmDetail>(`/api/alarms/${encodeURIComponent(alarmCode)}`);
+  },
+
+  async acknowledgeAlarm(alarmCode: string, note: string): Promise<AlarmDetail> {
+    return request<AlarmDetail>(`/api/alarms/${encodeURIComponent(alarmCode)}/acknowledge`, {
+      method: "PATCH",
+      body: JSON.stringify({ operator: "demo-operator", note }),
+    });
+  },
+
+  async clearAlarm(alarmCode: string, note: string): Promise<AlarmDetail> {
+    return request<AlarmDetail>(`/api/alarms/${encodeURIComponent(alarmCode)}/clear`, {
+      method: "PATCH",
+      body: JSON.stringify({ operator: "demo-operator", note }),
+    });
   },
 };

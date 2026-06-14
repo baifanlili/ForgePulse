@@ -1,6 +1,7 @@
 import { ConfigProvider } from "antd";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./AppShell";
+import { AlarmCenterPage } from "../features/alarms/AlarmCenterPage";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { DeviceDetailPage } from "../features/devices/DeviceDetailPage";
 
@@ -19,6 +20,7 @@ export function App() {
         <Route element={<AppShell />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/alarms" element={<AlarmCenterPage />} />
           <Route path="/devices/:deviceCode" element={<DeviceDetailPage />} />
         </Route>
       </Routes>

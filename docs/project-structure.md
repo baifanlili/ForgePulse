@@ -19,6 +19,7 @@ ForgePulse/
 |   |-- data-sources.md
 |   |-- deployment.md
 |   |-- engineering-architecture.md
+|   |-- enterprise-roadmap.md
 |   |-- github-plan.md
 |   |-- mvp-scope.md
 |   |-- progress.md
