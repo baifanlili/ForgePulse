@@ -139,3 +139,27 @@ export type SystemOverview = {
     row_count: number;
   }>;
 };
+
+export type EdgeCommand = {
+  command_id: string;
+  gateway_id: string;
+  command_type: "pause" | "resume" | "set_interval" | "inject_fault";
+  parameters: Record<string, unknown>;
+  status: string;
+  operator: string;
+  created_at: string;
+  published_at: string | null;
+};
+
+export type EdgeGateway = {
+  gateway_id: string;
+  line_id: string | null;
+  latest_seen_at: string;
+  latest_sequence: number | null;
+  sample_period_ms: number | null;
+  telemetry_point_count: number;
+  degraded_point_count: number;
+  latest_quality: string | null;
+  latest_status_reason: string | null;
+  latest_command?: EdgeCommand | null;
+};

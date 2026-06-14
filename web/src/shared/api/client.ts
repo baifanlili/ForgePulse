@@ -1,5 +1,17 @@
 import { demoDashboard, demoDevices, demoSpc } from "../../demoData";
-import type { Alarm, AlarmDetail, AlarmStatus, DashboardData, Device, DeviceDetail, DeviceTelemetry, SpcPoint, SystemOverview } from "../types";
+import type {
+  Alarm,
+  AlarmDetail,
+  AlarmStatus,
+  DashboardData,
+  Device,
+  DeviceDetail,
+  DeviceTelemetry,
+  EdgeCommand,
+  EdgeGateway,
+  SpcPoint,
+  SystemOverview,
+} from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
@@ -178,6 +190,48 @@ export const api = {
     return request<AlarmDetail>(`/api/alarms/${encodeURIComponent(alarmCode)}/clear`, {
       method: "PATCH",
       body: JSON.stringify({ operator: "demo-operator", note }),
+    });
+  },
+
+  async edgeGateways(): Promise<EdgeGateway[]> {
+    if (DEMO_MODE) {
+      return [
+        {
+          gateway_id: "EDGE-GW-01",
+          line_id: "FAB-A-RT",
+          latest_seen_at: new Date().toISOString(),
+          latest_sequence: 128,
+          sample_period_ms: 5000,
+          telemetry_point_count: 4800,
+          degraded_point_count: 64,
+          latest_quality: "good",
+          latest_status_reason: "normal",
+          latest_command: null,
+        },
+      ];
+    }
+    return request<EdgeGateway[]>("/api/edge/gateways");
+  },
+
+  async edgeCommands(gatewayId: string): Promise<EdgeCommand[]> {
+    if (DEMO_MODE) {
+      return [];
+    }
+    return request<EdgeCommand[]>(`/api/edge/gateways/${encodeURIComponent(gatewayId)}/commands`);
+  },
+
+  async sendEdgeCommand(
+    gatewayId: string,
+    commandType: EdgeCommand["command_type"],
+    parameters: Record<string, unknown> = {},
+  ): Promise<EdgeCommand> {
+    return request<EdgeCommand>(`/api/edge/gateways/${encodeURIComponent(gatewayId)}/commands`, {
+      method: "POST",
+      body: JSON.stringify({
+        command_type: commandType,
+        parameters,
+        operator: "demo-operator",
+      }),
     });
   },
 };

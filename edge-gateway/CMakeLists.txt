@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(
     forgepulse-edge-gateway
     src/config.cpp
+    src/command_listener.cpp
     src/main.cpp
     src/mqtt_publisher.cpp
     src/telemetry.cpp

@@ -14,6 +14,8 @@
 - 已开始按企业级真实项目结构拆分前后端模块，新增 `docs/engineering-architecture.md`。
 - 已新增系统运营总览，开始覆盖服务健康、数据摄取延迟和核心表数据量。
 - 已开始整理 C++ 边缘网关工程结构，将配置、遥测生成和 MQTT 发布从 `main.cpp` 拆出。
+- C++ 边缘网关已补充消息序列号、网关/产线标识、采样周期、质量标记、发布重试和失败落盘缓存。
+- 已新增边缘网关交互闭环：前端 `/edge` 页面可通过 API 下发 MQTT command，C++ 网关可响应暂停、恢复、改采样周期和注入故障。
 
 ## 已完成
 
@@ -38,11 +40,16 @@
   - `GET /api/devices/{device_code}`
   - `GET /api/devices/{device_code}/telemetry`
   - `GET /api/system/overview`
+  - `GET /api/edge/gateways`
+  - `GET /api/edge/gateways/{gateway_id}/commands`
+  - `POST /api/edge/gateways/{gateway_id}/commands`
 - 新增 stream worker 占位入口。
 - 新增 React/Vite 工业仪表盘页面，展示设备状态、活动告警、良率趋势、Bin 分布、SPC 控制图和最新遥测。
 - 新增 `web/package-lock.json`，用于锁定前端依赖版本。
 - `edge-gateway` 已可生成多设备模拟遥测 JSON，并发布到 MQTT topic `forgepulse/telemetry`。
 - `edge-gateway` 已拆分为配置、遥测模型和 MQTT 发布器模块，保留轻量 `mosquitto_pub` 发布方案。
+- `edge-gateway` 发布的 `payload` 已包含 `schema_version`、`gateway_id`、`line_id`、`sequence`、`quality`、`status_reason` 和 `sample_period_ms`，便于后续做数据质量、补发和边缘审计。
+- `edge-gateway` 已监听 `forgepulse/commands/{gateway_id}` 命令 topic，可响应平台下发的运行控制命令。
 - `stream-worker` 已可订阅 MQTT、写入 `telemetry_points`、更新 `devices.last_heartbeat_at`，并根据温度/压力阈值维护实时告警。
 - 前端仪表盘已增加 10 秒自动刷新。
 - 为 `web`、`edge-gateway`、`stream-worker` 补充 `.dockerignore`，减少 Docker 构建上下文。
@@ -71,6 +78,7 @@
 - 当前已完成 router 级拆分；后续可在业务模型稳定后继续增加 Pydantic schemas、repository、service 和测试层。
 - 告警 API 已支持列表过滤、详情查询、确认和关闭动作，并记录 `alarm_events` 审计轨迹。
 - 系统运营 API 已提供 `/api/system/overview`，用于汇总服务状态、设备/告警统计、最新遥测延迟、近 15 分钟摄取分布和核心表数据量。
+- 边缘网关 API 已提供 `/api/edge/gateways` 和命令下发接口，命令会发布到 MQTT command topic 并记录到 `edge_commands`。
 
 ### stream-worker
 
@@ -87,17 +95,23 @@
 - 配置模块：`edge-gateway/src/config.cpp`
 - 遥测模块：`edge-gateway/src/telemetry.cpp`
 - MQTT 发布模块：`edge-gateway/src/mqtt_publisher.cpp`
+- 命令监听模块：`edge-gateway/src/command_listener.cpp`
 - 当前生成 `ETCH-01`、`CVD-02`、`PHOTO-03`、`TEST-04` 的模拟遥测。
 - 运行容器中使用 `mosquitto_pub` 发布 MQTT 消息。
 - MQTT 地址通过 `MQTT_HOST`、`MQTT_PORT`、`MQTT_TELEMETRY_TOPIC` 环境变量配置。
 - 发布间隔可通过 `EDGE_PUBLISH_INTERVAL_SECONDS` 配置，默认 5 秒。
+- 网关标识通过 `EDGE_GATEWAY_ID`、`EDGE_LINE_ID` 配置。
+- 发布失败会按 `EDGE_PUBLISH_RETRY_COUNT` 重试；仍失败时写入 `EDGE_SPOOL_DIR`，后续循环按 `EDGE_SPOOL_FLUSH_LIMIT` 补发。
+- 命令 topic 通过 `MQTT_COMMAND_TOPIC` 配置，默认 `forgepulse/commands/EDGE-GW-01`。
+- 当前支持命令：`pause`、`resume`、`set_interval`、`inject_fault`。
 
 ### web
 
 - 入口文件：`web/src/main.tsx`
-- 当前使用 `HashRouter`，包含运行总览、设备详情、告警中心和系统运营页面。
+- 当前使用 `HashRouter`，包含运行总览、设备详情、告警中心、边缘网关和系统运营页面。
 - 已新增告警中心页面，侧边栏可进入 `/alarms`。
 - 已新增系统运营页面，侧边栏可进入 `/system`。
+- 已新增边缘网关页面，侧边栏可进入 `/edge`。
 - 工程结构已拆分为：
   - `app/`：应用壳与路由
   - `features/`：业务页面
@@ -123,7 +137,9 @@
 3. 增加心跳超时规则，把长时间未上报的设备自动置为 `offline`。
 4. 将 worker 中的阈值规则抽成配置或独立规则类。
 5. 将系统运营页的服务状态从“数据推断”升级为真实健康探针和 worker 心跳表。
-6. 补充测试脚本，验证 API 查询、MQTT 消费和数据库写入。
+6. 将边缘命令从“已发布”升级为 C++ ack 回执闭环，并在平台侧记录 executed/failed 状态。
+7. 为 C++ 网关补充单元测试，覆盖遥测生成、质量标记、命令解析、重试和 spool 补发逻辑。
+8. 补充测试脚本，验证 API 查询、MQTT 消费和数据库写入。
 
 ## 数据来源约定
 

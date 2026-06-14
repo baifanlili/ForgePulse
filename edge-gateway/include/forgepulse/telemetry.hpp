@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -16,6 +17,17 @@ struct DeviceProfile {
 
 std::vector<DeviceProfile> default_device_profiles();
 
-std::string build_telemetry_payload(const DeviceProfile& device, int tick);
+std::string build_telemetry_payload(
+    const DeviceProfile& device,
+    int tick,
+    std::uint64_t sequence,
+    const std::string& gateway_id,
+    const std::string& line_id,
+    int sample_period_ms,
+    bool inject_fault,
+    const std::string& control_mode,
+    const std::string& last_command_id,
+    const std::string& last_command_type
+);
 
 }  // namespace forgepulse

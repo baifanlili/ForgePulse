@@ -87,6 +87,18 @@ CREATE TABLE IF NOT EXISTS spc_points (
     lower_control_limit DOUBLE PRECISION NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS edge_commands (
+    id BIGSERIAL PRIMARY KEY,
+    command_id VARCHAR(64) NOT NULL UNIQUE,
+    gateway_id VARCHAR(64) NOT NULL,
+    command_type VARCHAR(64) NOT NULL,
+    parameters JSONB NOT NULL DEFAULT '{}'::jsonb,
+    status VARCHAR(32) NOT NULL DEFAULT 'published',
+    operator VARCHAR(128) NOT NULL DEFAULT 'demo-operator',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    published_at TIMESTAMPTZ
+);
+
 CREATE INDEX IF NOT EXISTS idx_telemetry_points_device_time
     ON telemetry_points (device_code, time DESC);
 
@@ -98,6 +110,9 @@ CREATE INDEX IF NOT EXISTS idx_alarm_events_alarm_created
 
 CREATE INDEX IF NOT EXISTS idx_wafer_yields_lot
     ON wafer_yields (lot_code, wafer_id);
+
+CREATE INDEX IF NOT EXISTS idx_edge_commands_gateway_created
+    ON edge_commands (gateway_id, created_at DESC);
 
 ALTER TABLE alarms
     ADD COLUMN IF NOT EXISTS acknowledged_at TIMESTAMPTZ,

@@ -98,6 +98,7 @@ edge-gateway/
 |   |-- mqtt_publisher.hpp  MQTT 发布器接口
 |   `-- telemetry.hpp       设备画像与遥测 payload 生成
 `-- src/
+    |-- command_listener.cpp 命令 topic 监听与运行态调整
     |-- config.cpp
     |-- main.cpp            进程编排与发布循环
     |-- mqtt_publisher.cpp
@@ -105,6 +106,28 @@ edge-gateway/
 ```
 
 当前发布器仍通过容器内 `mosquitto_pub` 调用 MQTT，优点是镜像小、依赖少、便于快速验证。后续需要接入真实设备或更高可靠性时，再替换为正式 MQTT C/C++ SDK，并补充连接重试、QoS、离线缓存和本地采集适配层。
+
+当前边缘消息已经包含基本工业上下文：
+
+- `gateway_id`、`line_id`：标识边缘节点和产线。
+- `sequence`：网关侧递增序列号，用于后续发现丢包、乱序和补发。
+- `quality`、`status_reason`：网关侧对采样值做轻量质量判断。
+- `sample_period_ms`：记录采样周期，便于平台侧分析数据频率。
+- 发布失败后先按 `EDGE_PUBLISH_RETRY_COUNT` 重试，仍失败则写入 `EDGE_SPOOL_DIR`，后续循环按 `EDGE_SPOOL_FLUSH_LIMIT` 补发。
+- 平台控制命令通过 `forgepulse/commands/{gateway_id}` 下发，C++ 网关当前支持暂停、恢复、调整采样周期和注入故障。
+
+这仍不是最终工业 SDK 形态，但已经具备“边缘采集进程”的基本骨架：配置驱动、消息元数据、质量标记、失败缓冲和恢复补发。
+
+当前边缘控制链路：
+
+```text
+web /edge
+  -> platform-api /api/edge/gateways/{gateway_id}/commands
+  -> MQTT topic: forgepulse/commands/{gateway_id}
+  -> edge-gateway command_listener
+  -> C++ 运行态调整
+  -> 后续 telemetry payload 携带 last_command_id / control_mode
+```
 
 ## 近期演进原则
 

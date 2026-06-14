@@ -34,6 +34,7 @@ ForgePulse/
 |   |       |-- mqtt_publisher.hpp
 |   |       `-- telemetry.hpp
 |   `-- src/
+|       |-- command_listener.cpp
 |       |-- config.cpp
 |       |-- mqtt_publisher.cpp
 |       |-- main.cpp
