@@ -26,6 +26,23 @@ MQTT_TOPIC = "forgepulse/telemetry"
 PASSED = 0
 FAILED = 0
 
+_token: str | None = None
+
+
+def auth_headers() -> dict:
+    global _token
+    if _token is None:
+        resp = requests.post(
+            f"{API_BASE}/api/auth/login",
+            json={"username": "admin", "password": "forgepulse"},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            _token = resp.json()["access_token"]
+    if _token:
+        return {"Authorization": f"Bearer {_token}"}
+    return {}
+
 
 def check(msg: str, condition: bool) -> None:
     global PASSED, FAILED
@@ -124,6 +141,7 @@ def test_edge_command_flow():
             "parameters": {},
             "operator": "e2e-test",
         },
+        headers=auth_headers(),
         timeout=10,
     )
     check("命令下发成功", resp2.status_code == 200)
@@ -154,6 +172,7 @@ def test_edge_command_flow():
     requests.post(
         f"{API_BASE}/api/edge/gateways/{gateway_id}/commands",
         json={"command_type": "resume", "parameters": {}, "operator": "e2e-test"},
+        headers=auth_headers(),
         timeout=10,
     )
 

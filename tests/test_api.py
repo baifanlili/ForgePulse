@@ -19,6 +19,24 @@ API_BASE = os.getenv("API_BASE_URL", "http://localhost:8000")
 PASSED = 0
 FAILED = 0
 
+# 登录获取 token
+_token: str | None = None
+
+
+def auth_headers() -> dict:
+    global _token
+    if _token is None:
+        resp = requests.post(
+            f"{API_BASE}/api/auth/login",
+            json={"username": "admin", "password": "forgepulse"},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            _token = resp.json()["access_token"]
+    if _token:
+        return {"Authorization": f"Bearer {_token}"}
+    return {}
+
 
 def assert_status(resp, expected, label=""):
     global PASSED, FAILED
@@ -56,6 +74,32 @@ def assert_type(obj, field, expected_type, label=""):
         FAILED += 1
         type_name = "|".join(t.__name__ for t in types)
         print(f"  FAIL type({field})={type(value).__name__} expected {type_name} {label}")
+
+
+def test_auth():
+    print("\n[auth]")
+    resp = requests.post(
+        f"{API_BASE}/api/auth/login",
+        json={"username": "admin", "password": "forgepulse"},
+        timeout=10,
+    )
+    assert_status(resp, 200)
+    data = resp.json()
+    assert_field(data, "access_token")
+    assert_field(data, "username")
+    assert_field(data, "role")
+    assert data["role"] == "admin"
+
+    # 验证 /me 端点
+    token = data["access_token"]
+    resp2 = requests.get(
+        f"{API_BASE}/api/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=10,
+    )
+    assert_status(resp2, 200)
+    me = resp2.json()
+    assert me["username"] == "admin"
 
 
 def test_health():
@@ -150,6 +194,7 @@ def test_alarms():
             resp3 = requests.patch(
                 f"{API_BASE}/api/alarms/{ac}/acknowledge",
                 json={"operator": "test-script", "note": "自动化测试确认"},
+                headers=auth_headers(),
                 timeout=10,
             )
             assert_status(resp3, 200)
@@ -160,6 +205,7 @@ def test_alarms():
             resp4 = requests.patch(
                 f"{API_BASE}/api/alarms/{ac}/clear",
                 json={"operator": "test-script", "note": "自动化测试关闭"},
+                headers=auth_headers(),
                 timeout=10,
             )
             assert_status(resp4, 200)
@@ -247,6 +293,7 @@ def test_edge():
                 "parameters": {"interval_seconds": 5},
                 "operator": "test-script",
             },
+            headers=auth_headers(),
             timeout=10,
         )
         assert_status(resp3, 200)
@@ -264,6 +311,7 @@ def main():
 
     tests = [
         test_health,
+        test_auth,
         test_dashboard,
         test_devices,
         test_alarms,
