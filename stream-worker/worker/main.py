@@ -3,14 +3,24 @@ import os
 import signal
 import time
 from datetime import UTC, datetime
+from threading import Lock, Thread
 from typing import Any
 
 import paho.mqtt.client as mqtt
 import psycopg
+import psycopg.rows
 
+from worker.rules import RuleEngine
 
 MQTT_TOPIC = os.getenv("MQTT_TELEMETRY_TOPIC", "forgepulse/telemetry")
+HEARTBEAT_TIMEOUT_SECONDS = int(os.getenv("HEARTBEAT_TIMEOUT_SECONDS", "120"))
+HEARTBEAT_CHECK_INTERVAL = int(os.getenv("HEARTBEAT_CHECK_INTERVAL", "30"))
+WORKER_HEARTBEAT_INTERVAL = int(os.getenv("WORKER_HEARTBEAT_INTERVAL", "10"))
+WORKER_ID = os.getenv("WORKER_ID", "stream-worker-01")
 RUNNING = True
+
+_stats_lock = Lock()
+_stats = {"telemetry_processed": 0, "alarms_triggered": 0}
 
 
 def env(name: str, fallback: str) -> str:
@@ -35,26 +45,77 @@ def connect_db(retries: int = 30) -> psycopg.Connection[Any]:
     last_error: Exception | None = None
     for attempt in range(1, retries + 1):
         try:
-            return psycopg.connect(database_url())
-        except Exception as exc:  # noqa: BLE001 - startup retry should log any connection failure
+            return psycopg.connect(database_url(), row_factory=psycopg.rows.dict_row)
+        except Exception as exc:
             last_error = exc
             print(f"Database connection failed, retry {attempt}/{retries}: {exc}", flush=True)
             time.sleep(2)
     raise RuntimeError("Unable to connect to PostgreSQL") from last_error
 
 
-def upsert_alarm(cur: psycopg.Cursor[Any], device_code: str, metric_name: str, value: float, timestamp: datetime) -> None:
-    thresholds = {
-        "temperature": (76.0, "腔体温度偏高", "设备温度超过阈值，请检查冷却与工艺状态。"),
-        "pressure": (2.85, "压力波动偏高", "设备压力超过阈值，请检查气路与腔体状态。"),
-    }
-    if metric_name not in thresholds:
+def ensure_worker_heartbeats_table(conn: psycopg.Connection[Any]) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS worker_heartbeats (
+                id BIGSERIAL PRIMARY KEY,
+                worker_id VARCHAR(64) NOT NULL,
+                last_heartbeat_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                status VARCHAR(32) NOT NULL DEFAULT 'healthy',
+                telemetry_processed BIGINT NOT NULL DEFAULT 0,
+                alarms_triggered BIGINT NOT NULL DEFAULT 0,
+                detail TEXT,
+                recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_worker_heartbeats_worker_time
+            ON worker_heartbeats (worker_id, last_heartbeat_at DESC)
+            """
+        )
+    conn.commit()
+
+
+def clear_heartbeat_alarm(cur: psycopg.Cursor[Any], device_code: str, timestamp: datetime) -> None:
+    alarm_code = f"HB-{device_code}-TIMEOUT".upper()
+    cur.execute(
+        """
+        UPDATE alarms
+        SET status = 'cleared',
+            cleared_at = %s,
+            cleared_by = 'system'
+        WHERE alarm_code = %s
+          AND status IN ('active', 'acknowledged')
+        RETURNING alarm_code
+        """,
+        (timestamp, alarm_code),
+    )
+    if cur.fetchone() is None:
         return
 
-    limit, title, description = thresholds[metric_name]
+    cur.execute(
+        """
+        INSERT INTO alarm_events (alarm_code, event_type, operator, note, created_at)
+        VALUES (%s, 'cleared', 'system', %s, %s)
+        """,
+        (alarm_code, "设备心跳已恢复，自动关闭心跳超时告警", timestamp),
+    )
+
+
+def upsert_alarm(
+    cur: psycopg.Cursor[Any],
+    rules: RuleEngine,
+    device_code: str,
+    metric_name: str,
+    value: float,
+    timestamp: datetime,
+) -> None:
+    triggered = rules.evaluate(metric_name, value)
     alarm_code = f"RT-{device_code}-{metric_name}".upper()
 
-    if value >= limit:
+    if triggered:
         cur.execute(
             """
             INSERT INTO alarms (
@@ -82,16 +143,16 @@ def upsert_alarm(cur: psycopg.Cursor[Any], device_code: str, metric_name: str, v
                 cleared_at = NULL,
                 cleared_by = NULL
             """,
-            (alarm_code, device_code, "warning", title, description, timestamp),
+            (alarm_code, device_code, triggered.severity, triggered.title, triggered.description, timestamp),
         )
         cur.execute(
             """
             INSERT INTO alarm_events (alarm_code, event_type, operator, note, created_at)
             VALUES (%s, 'created', 'system', %s, %s)
             """,
-            (alarm_code, f"{metric_name}={value:.2f} 超过阈值 {limit:.2f}", timestamp),
+            (alarm_code, f"{metric_name}={value:.2f} 超过阈值 {triggered.threshold:.2f}", timestamp),
         )
-    else:
+    elif rules.clearance_check(metric_name, value):
         cur.execute(
             """
             UPDATE alarms
@@ -105,16 +166,21 @@ def upsert_alarm(cur: psycopg.Cursor[Any], device_code: str, metric_name: str, v
             (timestamp, alarm_code),
         )
         if cur.fetchone() is not None:
+            rule = rules.rules.get(metric_name)
             cur.execute(
                 """
                 INSERT INTO alarm_events (alarm_code, event_type, operator, note, created_at)
                 VALUES (%s, 'cleared', 'system', %s, %s)
                 """,
-                (alarm_code, f"{metric_name}={value:.2f} 已恢复到阈值 {limit:.2f} 以下", timestamp),
+                (alarm_code, f"{metric_name}={value:.2f} 已恢复到阈值 {rule.threshold:.2f} 以下", timestamp),
             )
 
 
-def persist_message(conn: psycopg.Connection[Any], message: dict[str, Any]) -> None:
+def persist_message(
+    conn: psycopg.Connection[Any],
+    rules: RuleEngine,
+    message: dict[str, Any],
+) -> None:
     device_code = str(message["device_code"])
     status = str(message.get("status", "running"))
     timestamp = parse_timestamp(str(message["timestamp"]))
@@ -149,6 +215,7 @@ def persist_message(conn: psycopg.Connection[Any], message: dict[str, Any]) -> N
                 timestamp,
             ),
         )
+        clear_heartbeat_alarm(cur, device_code, timestamp)
 
         for metric_name, raw_value in metrics.items():
             value = float(raw_value)
@@ -171,15 +238,131 @@ def persist_message(conn: psycopg.Connection[Any], message: dict[str, Any]) -> N
                     json.dumps({"source": "mqtt", **payload}, ensure_ascii=False),
                 ),
             )
-            upsert_alarm(cur, device_code, metric_name, value, timestamp)
+            upsert_alarm(cur, rules, device_code, metric_name, value, timestamp)
 
     conn.commit()
+    with _stats_lock:
+        _stats["telemetry_processed"] += 1
+
+
+def check_heartbeats(conn: psycopg.Connection[Any], timeout_seconds: int) -> None:
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE devices
+                SET status = 'offline',
+                    updated_at = NOW()
+                WHERE status != 'offline'
+                  AND last_heartbeat_at < NOW() - (%s * INTERVAL '1 second')
+                RETURNING device_code, device_name, last_heartbeat_at
+                """,
+                (timeout_seconds,),
+            )
+            expired = cur.fetchall()
+            for row in expired:
+                device_code = row["device_code"]
+                device_name = row["device_name"]
+                last_hb = row["last_heartbeat_at"]
+                alarm_code = f"HB-{device_code}-TIMEOUT".upper()
+                note = f"设备 {device_name} 最后心跳 {last_hb}，已超过 {timeout_seconds} 秒，自动置为 offline"
+                cur.execute(
+                    """
+                    INSERT INTO alarms (
+                        alarm_code,
+                        device_code,
+                        severity,
+                        title,
+                        description,
+                        status,
+                        started_at,
+                        acknowledged_at,
+                        acknowledged_by,
+                        cleared_at,
+                        cleared_by
+                    )
+                    VALUES (%s, %s, 'warning', '心跳超时', %s, 'active', NOW(), NULL, NULL, NULL, NULL)
+                    ON CONFLICT (alarm_code) DO UPDATE SET
+                        description = EXCLUDED.description,
+                        started_at = alarms.started_at
+                    """,
+                    (alarm_code, device_code, note),
+                )
+                cur.execute(
+                    """
+                    INSERT INTO alarm_events (alarm_code, event_type, operator, note, created_at)
+                    VALUES (%s, 'created', 'system', %s, NOW())
+                    """,
+                    (alarm_code, note),
+                )
+                print(f"Device {device_code} marked offline (heartbeat timeout)", flush=True)
+        conn.commit()
+        if expired:
+            with _stats_lock:
+                _stats["alarms_triggered"] += len(expired)
+    except Exception as exc:
+        conn.rollback()
+        print(f"Heartbeat check failed: {exc}", flush=True)
+
+
+def report_health(conn: psycopg.Connection[Any]) -> None:
+    try:
+        with _stats_lock:
+            telemetry_processed = _stats["telemetry_processed"]
+            alarms_triggered = _stats["alarms_triggered"]
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO worker_heartbeats (worker_id, status, telemetry_processed, alarms_triggered, detail)
+                VALUES (%s, 'healthy', %s, %s, %s)
+                """,
+                (
+                    WORKER_ID,
+                    telemetry_processed,
+                    alarms_triggered,
+                    f"MQTT 订阅 {MQTT_TOPIC}，已处理 {telemetry_processed} 条遥测",
+                ),
+            )
+            cur.execute(
+                """
+                DELETE FROM worker_heartbeats
+                WHERE worker_id = %s
+                  AND recorded_at < NOW() - INTERVAL '24 hours'
+                """,
+                (WORKER_ID,),
+            )
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        print(f"Health report failed: {exc}", flush=True)
+
+
+def health_reporter() -> None:
+    conn = connect_db()
+    ensure_worker_heartbeats_table(conn)
+    while RUNNING:
+        time.sleep(WORKER_HEARTBEAT_INTERVAL)
+        if not RUNNING:
+            break
+        report_health(conn)
+    conn.close()
+
+
+def heartbeat_monitor() -> None:
+    conn = connect_db()
+    while RUNNING:
+        time.sleep(HEARTBEAT_CHECK_INTERVAL)
+        if not RUNNING:
+            break
+        check_heartbeats(conn, HEARTBEAT_TIMEOUT_SECONDS)
+    conn.close()
 
 
 def main() -> None:
     mqtt_host = env("MQTT_HOST", "mqtt")
     mqtt_port = int(env("MQTT_PORT", "1883"))
     conn = connect_db()
+    rules = RuleEngine.from_env()
 
     def stop(_signum: int, _frame: Any) -> None:
         global RUNNING
@@ -187,6 +370,12 @@ def main() -> None:
 
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
+
+    monitor_thread = Thread(target=heartbeat_monitor, daemon=True)
+    monitor_thread.start()
+
+    health_thread = Thread(target=health_reporter, daemon=True)
+    health_thread.start()
 
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="forgepulse-stream-worker")
 
@@ -206,9 +395,9 @@ def main() -> None:
     def on_message(_client: mqtt.Client, _userdata: Any, msg: mqtt.MQTTMessage) -> None:
         try:
             payload = json.loads(msg.payload.decode("utf-8"))
-            persist_message(conn, payload)
+            persist_message(conn, rules, payload)
             print(f"Persisted telemetry from {payload['device_code']}", flush=True)
-        except Exception as exc:  # noqa: BLE001 - keep worker alive on malformed messages
+        except Exception as exc:
             conn.rollback()
             print(f"Failed to process MQTT message: {exc}", flush=True)
 
@@ -224,7 +413,7 @@ def main() -> None:
                 time.sleep(1)
             client.loop_stop()
             client.disconnect()
-        except Exception as exc:  # noqa: BLE001 - long-running service should retry
+        except Exception as exc:
             print(f"MQTT loop failed: {exc}", flush=True)
             time.sleep(3)
 

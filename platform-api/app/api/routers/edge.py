@@ -5,17 +5,11 @@ from uuid import uuid4
 
 import paho.mqtt.client as mqtt
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
 
 from app.core.db import db_cursor
+from app.schemas.edge import EdgeCommand, EdgeCommandRequest, EdgeGateway
 
 router = APIRouter()
-
-
-class EdgeCommandRequest(BaseModel):
-    command_type: str = Field(pattern="^(pause|resume|set_interval|inject_fault)$")
-    parameters: dict[str, Any] = Field(default_factory=dict)
-    operator: str = "demo-operator"
 
 
 def env(name: str, fallback: str) -> str:
@@ -54,7 +48,9 @@ def ensure_edge_commands_table() -> None:
 def publish_command(gateway_id: str, payload: dict[str, Any]) -> None:
     topic_template = env("MQTT_COMMAND_TOPIC_TEMPLATE", "forgepulse/commands/{gateway_id}")
     topic = topic_template.format(gateway_id=gateway_id)
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=f"forgepulse-api-{uuid4().hex[:8]}")
+    client = mqtt.Client(
+        mqtt.CallbackAPIVersion.VERSION2, client_id=f"forgepulse-api-{uuid4().hex[:8]}"
+    )
     client.connect(env("MQTT_HOST", "mqtt"), mqtt_port(), keepalive=10)
     result = client.publish(topic, json.dumps(payload, ensure_ascii=False), qos=1)
     result.wait_for_publish(timeout=5)
@@ -63,8 +59,8 @@ def publish_command(gateway_id: str, payload: dict[str, Any]) -> None:
         raise RuntimeError(f"MQTT publish failed: {result.rc}")
 
 
-@router.get("/gateways")
-def list_gateways() -> list[dict[str, Any]]:
+@router.get("/gateways", response_model=list[EdgeGateway])
+def list_gateways() -> list[EdgeGateway]:
     ensure_edge_commands_table()
     with db_cursor() as cur:
         cur.execute(
@@ -112,7 +108,7 @@ def list_gateways() -> list[dict[str, Any]]:
             ORDER BY latest.latest_seen_at DESC
             """
         )
-        gateways = list(cur.fetchall())
+        gateways = [EdgeGateway(**row) for row in cur.fetchall()]
 
         cur.execute(
             """
@@ -129,15 +125,15 @@ def list_gateways() -> list[dict[str, Any]]:
             ORDER BY gateway_id, created_at DESC
             """
         )
-        latest_commands = {row["gateway_id"]: row for row in cur.fetchall()}
+        latest_commands = {row["gateway_id"]: EdgeCommand(**row) for row in cur.fetchall()}
 
     for gateway in gateways:
-        gateway["latest_command"] = latest_commands.get(gateway["gateway_id"])
+        gateway.latest_command = latest_commands.get(gateway.gateway_id)
     return gateways
 
 
-@router.get("/gateways/{gateway_id}/commands")
-def list_gateway_commands(gateway_id: str) -> list[dict[str, Any]]:
+@router.get("/gateways/{gateway_id}/commands", response_model=list[EdgeCommand])
+def list_gateway_commands(gateway_id: str) -> list[EdgeCommand]:
     ensure_edge_commands_table()
     with db_cursor() as cur:
         cur.execute(
@@ -158,11 +154,11 @@ def list_gateway_commands(gateway_id: str) -> list[dict[str, Any]]:
             """,
             (gateway_id,),
         )
-        return list(cur.fetchall())
+        return [EdgeCommand(**row) for row in cur.fetchall()]
 
 
-@router.post("/gateways/{gateway_id}/commands")
-def create_gateway_command(gateway_id: str, body: EdgeCommandRequest) -> dict[str, Any]:
+@router.post("/gateways/{gateway_id}/commands", response_model=EdgeCommand)
+def create_gateway_command(gateway_id: str, body: EdgeCommandRequest) -> EdgeCommand:
     ensure_edge_commands_table()
     command_id = f"CMD-{uuid4().hex[:12].upper()}"
     payload = {
@@ -175,7 +171,7 @@ def create_gateway_command(gateway_id: str, body: EdgeCommandRequest) -> dict[st
 
     try:
         publish_command(gateway_id, payload)
-    except Exception as exc:  # noqa: BLE001 - surface command publish failure to UI
+    except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Command publish failed: {exc}") from exc
 
     with db_cursor() as cur:
@@ -201,7 +197,12 @@ def create_gateway_command(gateway_id: str, body: EdgeCommandRequest) -> dict[st
                 created_at,
                 published_at
             """,
-            (command_id, gateway_id, body.command_type, json.dumps(body.parameters), body.operator),
+            (
+                command_id,
+                gateway_id,
+                body.command_type,
+                json.dumps(body.parameters),
+                body.operator,
+            ),
         )
-        command = cur.fetchone()
-    return command
+        return EdgeCommand(**cur.fetchone())

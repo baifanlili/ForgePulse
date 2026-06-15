@@ -82,7 +82,7 @@ export function DeviceDetailPage() {
           <Descriptions.Item label="状态"><DeviceStatusTag status={detail.device.status} /></Descriptions.Item>
           <Descriptions.Item label="区域">{detail.device.area}</Descriptions.Item>
           <Descriptions.Item label="产线">{detail.device.line}</Descriptions.Item>
-          <Descriptions.Item label="最近心跳">{formatDateTime(detail.device.last_heartbeat_at)}</Descriptions.Item>
+          <Descriptions.Item label="最近心跳">{formatDateTime(detail.device.last_heartbeat_at ?? "")}</Descriptions.Item>
         </Descriptions>
       </Card>
 
@@ -112,15 +112,15 @@ export function DeviceDetailPage() {
               <List.Item.Meta
                 title={
                   <Space wrap>
-                    <AlarmSeverityTag severity={alarm.severity} />
+                    {alarm.severity && <AlarmSeverityTag severity={alarm.severity} />}
                     <Text strong>{alarm.title}</Text>
-                    <AlarmStatusTag status={alarm.status} />
+                    {alarm.status && <AlarmStatusTag status={alarm.status} />}
                   </Space>
                 }
                 description={
                   <Space direction="vertical" size={2}>
                     <Text>{alarm.description}</Text>
-                    <Text type="secondary">开始于 {formatDateTime(alarm.started_at)}</Text>
+                    <Text type="secondary">开始于 {formatDateTime(alarm.started_at ?? "")}</Text>
                   </Space>
                 }
               />

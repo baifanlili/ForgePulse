@@ -1,15 +1,21 @@
-from typing import Any, Literal
+from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Query
 
 from app.core.db import db_cursor
+from app.schemas.alarm import (
+    AckBody,
+    Alarm,
+    AlarmDetail,
+    AlarmEvent,
+    AlarmStatus,
+    ClearBody,
+)
 
 router = APIRouter()
 
-AlarmStatus = Literal["active", "acknowledged", "cleared"]
 
-
-def fetch_alarm(alarm_code: str) -> dict[str, Any]:
+def fetch_alarm(alarm_code: str) -> AlarmDetail:
     with db_cursor() as cur:
         cur.execute(
             """
@@ -30,8 +36,8 @@ def fetch_alarm(alarm_code: str) -> dict[str, Any]:
             """,
             (alarm_code,),
         )
-        alarm = cur.fetchone()
-        if alarm is None:
+        alarm_row = cur.fetchone()
+        if alarm_row is None:
             raise HTTPException(status_code=404, detail="Alarm not found")
 
         cur.execute(
@@ -43,18 +49,18 @@ def fetch_alarm(alarm_code: str) -> dict[str, Any]:
             """,
             (alarm_code,),
         )
-        events = list(cur.fetchall())
+        events = [AlarmEvent(**row) for row in cur.fetchall()]
 
-    return {"alarm": alarm, "events": events}
+    return AlarmDetail(alarm=Alarm(**alarm_row), events=events)
 
 
-@router.get("")
+@router.get("", response_model=list[Alarm])
 def list_alarms(
     status: AlarmStatus | None = Query(default=None),
     severity: str | None = Query(default=None),
     device_code: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
-) -> list[dict[str, Any]]:
+) -> list[Alarm]:
     filters: list[str] = []
     params: list[Any] = []
 
@@ -99,20 +105,19 @@ def list_alarms(
             """,
             params,
         )
-        return list(cur.fetchall())
+        return [Alarm(**row) for row in cur.fetchall()]
 
 
-@router.get("/{alarm_code}")
-def get_alarm(alarm_code: str) -> dict[str, Any]:
+@router.get("/{alarm_code}", response_model=AlarmDetail)
+def get_alarm(alarm_code: str) -> AlarmDetail:
     return fetch_alarm(alarm_code)
 
 
-@router.patch("/{alarm_code}/acknowledge")
+@router.patch("/{alarm_code}/acknowledge", response_model=AlarmDetail)
 def acknowledge_alarm(
     alarm_code: str,
-    operator: str = Body(default="operator"),
-    note: str = Body(default=""),
-) -> dict[str, Any]:
+    body: AckBody = Body(default_factory=AckBody),
+) -> AlarmDetail:
     with db_cursor() as cur:
         cur.execute(
             """
@@ -124,9 +129,10 @@ def acknowledge_alarm(
               AND status = 'active'
             RETURNING alarm_code
             """,
-            (operator, alarm_code),
+            (body.operator, alarm_code),
         )
-        if cur.fetchone() is None:
+        updated = cur.fetchone() is not None
+        if not updated:
             cur.execute("SELECT status FROM alarms WHERE alarm_code = %s", (alarm_code,))
             alarm = cur.fetchone()
             if alarm is None:
@@ -134,23 +140,23 @@ def acknowledge_alarm(
             if alarm["status"] != "acknowledged":
                 raise HTTPException(status_code=409, detail="Alarm cannot be acknowledged")
 
-        cur.execute(
-            """
-            INSERT INTO alarm_events (alarm_code, event_type, operator, note)
-            VALUES (%s, 'acknowledged', %s, %s)
-            """,
-            (alarm_code, operator, note),
-        )
+        if updated:
+            cur.execute(
+                """
+                INSERT INTO alarm_events (alarm_code, event_type, operator, note)
+                VALUES (%s, 'acknowledged', %s, %s)
+                """,
+                (alarm_code, body.operator, body.note),
+            )
 
     return fetch_alarm(alarm_code)
 
 
-@router.patch("/{alarm_code}/clear")
+@router.patch("/{alarm_code}/clear", response_model=AlarmDetail)
 def clear_alarm(
     alarm_code: str,
-    operator: str = Body(default="operator"),
-    note: str = Body(default=""),
-) -> dict[str, Any]:
+    body: ClearBody = Body(default_factory=ClearBody),
+) -> AlarmDetail:
     with db_cursor() as cur:
         cur.execute(
             """
@@ -162,9 +168,10 @@ def clear_alarm(
               AND status IN ('active', 'acknowledged')
             RETURNING alarm_code
             """,
-            (operator, alarm_code),
+            (body.operator, alarm_code),
         )
-        if cur.fetchone() is None:
+        updated = cur.fetchone() is not None
+        if not updated:
             cur.execute("SELECT status FROM alarms WHERE alarm_code = %s", (alarm_code,))
             alarm = cur.fetchone()
             if alarm is None:
@@ -172,12 +179,13 @@ def clear_alarm(
             if alarm["status"] != "cleared":
                 raise HTTPException(status_code=409, detail="Alarm cannot be cleared")
 
-        cur.execute(
-            """
-            INSERT INTO alarm_events (alarm_code, event_type, operator, note)
-            VALUES (%s, 'cleared', %s, %s)
-            """,
-            (alarm_code, operator, note),
-        )
+        if updated:
+            cur.execute(
+                """
+                INSERT INTO alarm_events (alarm_code, event_type, operator, note)
+                VALUES (%s, 'cleared', %s, %s)
+                """,
+                (alarm_code, body.operator, body.note),
+            )
 
     return fetch_alarm(alarm_code)

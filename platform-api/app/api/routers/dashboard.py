@@ -1,14 +1,20 @@
-from typing import Any
-
 from fastapi import APIRouter
 
 from app.core.db import db_cursor
+from app.schemas.dashboard import (
+    DashboardData,
+    DashboardSummary,
+    LatestMetricPoint,
+    RecentAlarm,
+    YieldTrend,
+    BinDistItem,
+)
 
 router = APIRouter()
 
 
-@router.get("/dashboard")
-def dashboard() -> dict[str, Any]:
+@router.get("/dashboard", response_model=DashboardData)
+def dashboard() -> DashboardData:
     with db_cursor() as cur:
         cur.execute(
             """
@@ -63,7 +69,7 @@ def dashboard() -> dict[str, Any]:
             ORDER BY device_code, metric_name
             """
         )
-        latest_metrics = list(cur.fetchall())
+        latest_metrics = [LatestMetricPoint(**row) for row in cur.fetchall()]
 
         cur.execute(
             """
@@ -81,7 +87,7 @@ def dashboard() -> dict[str, Any]:
             LIMIT 5
             """
         )
-        recent_alarms = list(cur.fetchall())
+        recent_alarms = [RecentAlarm(**row) for row in cur.fetchall()]
 
         cur.execute(
             """
@@ -90,7 +96,7 @@ def dashboard() -> dict[str, Any]:
             ORDER BY started_at
             """
         )
-        lots = list(cur.fetchall())
+        yield_trend = [YieldTrend(**row) for row in cur.fetchall()]
 
         cur.execute(
             """
@@ -105,19 +111,19 @@ def dashboard() -> dict[str, Any]:
             ORDER BY die_count DESC
             """
         )
-        bins = list(cur.fetchall())
+        bin_distribution = [BinDistItem(**row) for row in cur.fetchall()]
 
-    return {
-        "summary": {
-            "device_count": device_count,
-            "running_count": status_counts.get("running", 0),
-            "warning_count": status_counts.get("warning", 0),
-            "offline_count": status_counts.get("offline", 0),
-            "active_alarm_count": active_alarm_count,
-            "average_yield": float(average_yield or 0),
-        },
-        "latest_metrics": latest_metrics,
-        "recent_alarms": recent_alarms,
-        "yield_trend": lots,
-        "bin_distribution": bins,
-    }
+    return DashboardData(
+        summary=DashboardSummary(
+            device_count=device_count,
+            running_count=status_counts.get("running", 0),
+            warning_count=status_counts.get("warning", 0),
+            offline_count=status_counts.get("offline", 0),
+            active_alarm_count=active_alarm_count,
+            average_yield=float(average_yield or 0),
+        ),
+        latest_metrics=latest_metrics,
+        recent_alarms=recent_alarms,
+        yield_trend=yield_trend,
+        bin_distribution=bin_distribution,
+    )

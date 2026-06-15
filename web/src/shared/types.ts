@@ -1,17 +1,19 @@
 export type DeviceStatus = "running" | "warning" | "offline";
 export type AlarmSeverity = "critical" | "warning" | "info";
 export type AlarmStatus = "active" | "acknowledged" | "cleared";
+export type ServiceStatus = "ok" | "stale" | "no_data" | "error";
+export type CommandType = "pause" | "resume" | "set_interval" | "inject_fault";
 
 export type Device = {
   device_code: string;
   device_name: string;
   device_type: string;
-  area: string;
-  line: string;
+  area: string | null;
+  line: string | null;
   status: DeviceStatus;
-  last_heartbeat_at: string;
-  created_at?: string;
-  updated_at?: string;
+  last_heartbeat_at: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 export type Alarm = {
@@ -19,19 +21,19 @@ export type Alarm = {
   device_code: string;
   severity: AlarmSeverity;
   title: string;
-  description?: string;
+  description: string | null;
   status: AlarmStatus;
   started_at: string;
-  acknowledged_at?: string | null;
-  acknowledged_by?: string | null;
-  cleared_at?: string | null;
-  cleared_by?: string | null;
+  acknowledged_at: string | null;
+  acknowledged_by: string | null;
+  cleared_at: string | null;
+  cleared_by: string | null;
 };
 
 export type AlarmEvent = {
   event_type: string;
   operator: string;
-  note?: string | null;
+  note: string | null;
   created_at: string;
 };
 
@@ -40,16 +42,37 @@ export type AlarmDetail = {
   events: AlarmEvent[];
 };
 
+export type AlarmSummary = {
+  alarm_code: string;
+  device_code?: string | null;
+  severity?: AlarmSeverity | null;
+  title?: string | null;
+  description?: string | null;
+  status?: AlarmStatus | null;
+  started_at?: string | null;
+  acknowledged_at?: string | null;
+  acknowledged_by?: string | null;
+  cleared_at?: string | null;
+  cleared_by?: string | null;
+};
+
 export type LotYield = {
   lot_code: string;
   product_code: string;
-  wafer_count?: number;
-  total_die?: number;
-  pass_die?: number;
-  fail_die?: number;
+  wafer_count: number | null;
+  total_die: number | null;
+  pass_die: number | null;
+  fail_die: number | null;
   yield_rate: number;
-  started_at: string;
-  completed_at?: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+};
+
+export type WaferYield = {
+  wafer_id: string;
+  yield_rate: number;
+  pass_die: number | null;
+  fail_die: number | null;
 };
 
 export type BinCount = {
@@ -62,11 +85,17 @@ export type MetricPoint = {
   metric_name: string;
   metric_value: number;
   time: string;
-  tags?: Record<string, unknown>;
+  tags: Record<string, unknown> | null;
+};
+
+export type LatestMetric = {
+  metric_name: string;
+  metric_value: number;
+  time: string;
 };
 
 export type SpcPoint = {
-  metric_name?: string;
+  metric_name: string;
   sample_time: string;
   value: number;
   center_line: number;
@@ -74,25 +103,55 @@ export type SpcPoint = {
   lower_control_limit: number;
 };
 
+export type DashboardSummary = {
+  device_count: number;
+  running_count: number;
+  warning_count: number;
+  offline_count: number;
+  active_alarm_count: number;
+  average_yield: number;
+};
+
+export type LatestMetricPoint = {
+  device_code: string;
+  metric_name: string;
+  metric_value: number;
+  time: string;
+};
+
+export type RecentAlarm = {
+  alarm_code: string;
+  device_code: string;
+  severity: AlarmSeverity;
+  title: string;
+  status: AlarmStatus;
+  started_at: string;
+};
+
+export type YieldTrend = {
+  lot_code: string;
+  product_code: string;
+  yield_rate: number;
+  started_at: string;
+};
+
+export type BinDistItem = {
+  bin_name: string;
+  die_count: number;
+};
+
 export type DashboardData = {
-  summary: {
-    device_count: number;
-    running_count: number;
-    warning_count: number;
-    offline_count: number;
-    active_alarm_count: number;
-    average_yield: number;
-  };
-  latest_metrics: MetricPoint[];
-  recent_alarms: Alarm[];
+  summary: DashboardSummary;
+  latest_metrics: LatestMetricPoint[];
+  recent_alarms: RecentAlarm[];
   yield_trend: LotYield[];
-  bin_distribution: BinCount[];
+  bin_distribution: BinDistItem[];
 };
 
 export type DeviceDetail = {
   device: Device;
-  latest_metrics: Array<Pick<MetricPoint, "metric_name" | "metric_value" | "time">>;
-  alarms: Alarm[];
+  latest_metrics: LatestMetric[];
+  alarms: AlarmSummary[];
 };
 
 export type DeviceTelemetry = {
@@ -107,43 +166,61 @@ export type DeviceTelemetry = {
 
 export type SystemServiceStatus = {
   name: string;
-  status: "ok" | "stale" | "no_data" | "error";
+  status: ServiceStatus;
   detail: string;
+};
+
+export type SystemOverviewSummary = {
+  device_count: number;
+  running_count: number;
+  warning_count: number;
+  offline_count: number;
+  active_alarm_count: number;
+  acknowledged_alarm_count: number;
+  cleared_alarm_count: number;
+  telemetry_count: number;
+  latest_telemetry_at: string | null;
+  telemetry_lag_seconds: number | null;
+};
+
+export type RecentDeviceIngestion = {
+  device_code: string;
+  latest_time: string;
+  point_count: number;
+};
+
+export type MetricIngestion = {
+  metric_name: string;
+  point_count: number;
+};
+
+export type TableCount = {
+  table_name: string;
+  row_count: number;
 };
 
 export type SystemOverview = {
   services: SystemServiceStatus[];
-  summary: {
-    device_count: number;
-    running_count: number;
-    warning_count: number;
-    offline_count: number;
-    active_alarm_count: number;
-    acknowledged_alarm_count: number;
-    cleared_alarm_count: number;
-    telemetry_count: number;
-    latest_telemetry_at: string | null;
-    telemetry_lag_seconds: number | null;
-  };
-  recent_device_ingestion: Array<{
-    device_code: string;
-    latest_time: string;
-    point_count: number;
-  }>;
-  metric_ingestion: Array<{
-    metric_name: string;
-    point_count: number;
-  }>;
-  table_counts: Array<{
-    table_name: string;
-    row_count: number;
-  }>;
+  summary: SystemOverviewSummary;
+  recent_device_ingestion: RecentDeviceIngestion[];
+  metric_ingestion: MetricIngestion[];
+  table_counts: TableCount[];
+  worker: WorkerHealth | null;
+};
+
+export type WorkerHealth = {
+  worker_id: string | null;
+  status: string | null;
+  last_heartbeat_at: string | null;
+  telemetry_processed: number;
+  alarms_triggered: number;
+  lag_seconds: number | null;
 };
 
 export type EdgeCommand = {
   command_id: string;
   gateway_id: string;
-  command_type: "pause" | "resume" | "set_interval" | "inject_fault";
+  command_type: CommandType;
   parameters: Record<string, unknown>;
   status: string;
   operator: string;
@@ -161,5 +238,11 @@ export type EdgeGateway = {
   degraded_point_count: number;
   latest_quality: string | null;
   latest_status_reason: string | null;
-  latest_command?: EdgeCommand | null;
+  latest_command: EdgeCommand | null;
+};
+
+export type EdgeCommandRequest = {
+  command_type: CommandType;
+  parameters: Record<string, unknown>;
+  operator: string;
 };

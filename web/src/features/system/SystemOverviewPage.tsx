@@ -4,7 +4,7 @@ import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../shared/api/client";
 import { formatDateTime } from "../../shared/format";
-import type { SystemOverview, SystemServiceStatus } from "../../shared/types";
+import type { SystemOverview, SystemServiceStatus, WorkerHealth } from "../../shared/types";
 
 const { Text, Title } = Typography;
 
@@ -153,6 +153,44 @@ export function SystemOverviewPage() {
           </Card>
         </Col>
       </Row>
+
+      {overview.worker && (
+        <Row gutter={[16, 16]}>
+          <Col span={24}>
+            <Card title="Stream Worker 运行状况" size="small">
+              <Row gutter={[16, 16]}>
+                <Col xs={12} sm={6}>
+                  <Statistic title="Worker ID" value={overview.worker.worker_id ?? "-"} />
+                </Col>
+                <Col xs={12} sm={6}>
+                  <Statistic title="状态" value={overview.worker.status ?? "-"} />
+                </Col>
+                <Col xs={12} sm={6}>
+                  <Statistic
+                    title="心跳延迟"
+                    value={overview.worker.lag_seconds ?? 0}
+                    suffix="秒"
+                    valueStyle={{ color: (overview.worker.lag_seconds ?? 999) > 60 ? "#dc2626" : "#15803d" }}
+                  />
+                </Col>
+                <Col xs={12} sm={6}>
+                  <Statistic title="最后心跳" value={formatDateTime(overview.worker.last_heartbeat_at ?? "")} />
+                </Col>
+                <Col xs={12} sm={6}>
+                  <Statistic title="已处理遥测" value={overview.worker.telemetry_processed} />
+                </Col>
+                <Col xs={12} sm={6}>
+                  <Statistic
+                    title="已触发告警"
+                    value={overview.worker.alarms_triggered}
+                    valueStyle={{ color: overview.worker.alarms_triggered > 0 ? "#ca8a04" : undefined }}
+                  />
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+        </Row>
+      )}
 
       <Row gutter={[16, 16]}>
         <Col xs={24} xl={12}>

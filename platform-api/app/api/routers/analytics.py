@@ -1,14 +1,13 @@
-from typing import Any
-
 from fastapi import APIRouter
 
 from app.core.db import db_cursor
+from app.schemas.analytics import BinCount, LotYield, SpcPoint, WaferYield, YieldData
 
 router = APIRouter()
 
 
-@router.get("/yield")
-def yield_trend() -> dict[str, Any]:
+@router.get("/yield", response_model=YieldData)
+def yield_trend() -> YieldData:
     with db_cursor() as cur:
         cur.execute(
             """
@@ -26,7 +25,7 @@ def yield_trend() -> dict[str, Any]:
             ORDER BY started_at
             """
         )
-        lots = list(cur.fetchall())
+        lots = [LotYield(**row) for row in cur.fetchall()]
 
         cur.execute(
             """
@@ -45,7 +44,7 @@ def yield_trend() -> dict[str, Any]:
             ORDER BY wafer_id
             """
         )
-        wafers = list(cur.fetchall())
+        wafers = [WaferYield(**row) for row in cur.fetchall()]
 
         cur.execute(
             """
@@ -60,13 +59,13 @@ def yield_trend() -> dict[str, Any]:
             ORDER BY die_count DESC
             """
         )
-        bins = list(cur.fetchall())
+        bins = [BinCount(**row) for row in cur.fetchall()]
 
-    return {"lots": lots, "wafers": wafers, "bins": bins}
+    return YieldData(lots=lots, wafers=wafers, bins=bins)
 
 
-@router.get("/spc")
-def spc_points() -> list[dict[str, Any]]:
+@router.get("/spc", response_model=list[SpcPoint])
+def spc_points() -> list[SpcPoint]:
     with db_cursor() as cur:
         cur.execute(
             """
@@ -81,4 +80,4 @@ def spc_points() -> list[dict[str, Any]]:
             ORDER BY sample_time
             """
         )
-        return list(cur.fetchall())
+        return [SpcPoint(**row) for row in cur.fetchall()]

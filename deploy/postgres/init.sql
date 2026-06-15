@@ -99,6 +99,17 @@ CREATE TABLE IF NOT EXISTS edge_commands (
     published_at TIMESTAMPTZ
 );
 
+CREATE TABLE IF NOT EXISTS worker_heartbeats (
+    id BIGSERIAL PRIMARY KEY,
+    worker_id VARCHAR(64) NOT NULL,
+    last_heartbeat_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    status VARCHAR(32) NOT NULL DEFAULT 'healthy',
+    telemetry_processed BIGINT NOT NULL DEFAULT 0,
+    alarms_triggered BIGINT NOT NULL DEFAULT 0,
+    detail TEXT,
+    recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_telemetry_points_device_time
     ON telemetry_points (device_code, time DESC);
 
@@ -113,6 +124,9 @@ CREATE INDEX IF NOT EXISTS idx_wafer_yields_lot
 
 CREATE INDEX IF NOT EXISTS idx_edge_commands_gateway_created
     ON edge_commands (gateway_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_worker_heartbeats_worker_time
+    ON worker_heartbeats (worker_id, last_heartbeat_at DESC);
 
 ALTER TABLE alarms
     ADD COLUMN IF NOT EXISTS acknowledged_at TIMESTAMPTZ,

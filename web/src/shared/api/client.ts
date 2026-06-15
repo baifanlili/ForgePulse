@@ -52,7 +52,26 @@ export const api = {
       return {
         device,
         latest_metrics: dashboard.latest_metrics.filter((item) => item.device_code === deviceCode),
-        alarms: dashboard.recent_alarms.filter((item) => item.device_code === deviceCode),
+        alarms: (dashboard.recent_alarms as unknown as Array<{
+          alarm_code: string;
+          device_code: string;
+          severity: string;
+          title: string;
+          description?: string | null;
+          status: string;
+          started_at: string;
+          cleared_at?: string | null;
+        }>)
+          .filter((item) => item.device_code === deviceCode)
+          .map((item) => ({
+            alarm_code: item.alarm_code,
+            severity: item.severity as Alarm["severity"],
+            title: item.title,
+            description: item.description ?? null,
+            status: item.status as Alarm["status"],
+            started_at: item.started_at,
+            cleared_at: item.cleared_at ?? null,
+          })),
       };
     }
     return request<DeviceDetail>(`/api/devices/${encodeURIComponent(deviceCode)}`);
@@ -65,6 +84,7 @@ export const api = {
         metric_name: metricName ?? "temperature",
         metric_value: 68 + Math.sin(index / 2) * 4,
         time: new Date(Date.now() - (16 - index) * 5 * 60 * 1000).toISOString(),
+        tags: null,
       }));
       return {
         device_code: deviceCode,
@@ -127,7 +147,16 @@ export const api = {
           { table_name: "telemetry_points", row_count: 4280 },
           { table_name: "alarms", row_count: 8 },
           { table_name: "alarm_events", row_count: 16 },
+          { table_name: "worker_heartbeats", row_count: 360 },
         ],
+        worker: {
+          worker_id: "stream-worker-01",
+          status: "healthy",
+          last_heartbeat_at: new Date().toISOString(),
+          telemetry_processed: 4280,
+          alarms_triggered: 8,
+          lag_seconds: 2,
+        },
       };
     }
     return request<SystemOverview>("/api/system/overview");
@@ -147,7 +176,7 @@ export const api = {
           return false;
         }
         return true;
-      });
+      }) as unknown as Alarm[];
     }
     const params = new URLSearchParams({ limit: "100" });
     if (filters.status && filters.status !== "all") {
@@ -165,7 +194,9 @@ export const api = {
   async alarmDetail(alarmCode: string): Promise<AlarmDetail> {
     if (DEMO_MODE) {
       const dashboard = demoDashboard as unknown as DashboardData;
-      const alarm = dashboard.recent_alarms.find((item) => item.alarm_code === alarmCode);
+      const alarm = dashboard.recent_alarms.find((item) => item.alarm_code === alarmCode) as unknown as
+        | Alarm
+        | undefined;
       if (!alarm) {
         throw new Error("告警不存在");
       }

@@ -3,12 +3,14 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 
 from app.core.db import db_cursor
+from app.schemas.device import Device, DeviceDetail, DeviceTelemetry, LatestMetric, MetricPoint
+from app.schemas.alarm import AlarmSummary
 
 router = APIRouter()
 
 
-@router.get("")
-def list_devices() -> list[dict[str, Any]]:
+@router.get("", response_model=list[Device])
+def list_devices() -> list[Device]:
     with db_cursor() as cur:
         cur.execute(
             """
@@ -24,11 +26,11 @@ def list_devices() -> list[dict[str, Any]]:
             ORDER BY area, line, device_code
             """
         )
-        return list(cur.fetchall())
+        return [Device(**row) for row in cur.fetchall()]
 
 
-@router.get("/{device_code}")
-def get_device(device_code: str) -> dict[str, Any]:
+@router.get("/{device_code}", response_model=DeviceDetail)
+def get_device(device_code: str) -> DeviceDetail:
     with db_cursor() as cur:
         cur.execute(
             """
@@ -47,8 +49,8 @@ def get_device(device_code: str) -> dict[str, Any]:
             """,
             (device_code,),
         )
-        device = cur.fetchone()
-        if device is None:
+        device_row = cur.fetchone()
+        if device_row is None:
             raise HTTPException(status_code=404, detail="Device not found")
 
         cur.execute(
@@ -74,7 +76,7 @@ def get_device(device_code: str) -> dict[str, Any]:
             """,
             (device_code,),
         )
-        latest_metrics = list(cur.fetchall())
+        latest_metrics = [LatestMetric(**row) for row in cur.fetchall()]
 
         cur.execute(
             """
@@ -95,23 +97,19 @@ def get_device(device_code: str) -> dict[str, Any]:
             """,
             (device_code,),
         )
-        alarms = list(cur.fetchall())
+        alarms = [AlarmSummary(**row) for row in cur.fetchall()]
 
-    return {
-        "device": device,
-        "latest_metrics": latest_metrics,
-        "alarms": alarms,
-    }
+    return DeviceDetail(device=Device(**device_row), latest_metrics=latest_metrics, alarms=alarms)
 
 
-@router.get("/{device_code}/telemetry")
+@router.get("/{device_code}/telemetry", response_model=DeviceTelemetry)
 def device_telemetry(
     device_code: str,
     metric_name: str | None = None,
     all_history: bool = False,
     hours: int = Query(default=1, ge=1, le=168),
     limit: int = Query(default=200, ge=1, le=1000),
-) -> dict[str, Any]:
+) -> DeviceTelemetry:
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM devices WHERE device_code = %s", (device_code,))
         if cur.fetchone() is None:
@@ -146,7 +144,7 @@ def device_telemetry(
             """,
             params,
         )
-        points = list(reversed(cur.fetchall()))
+        points = [MetricPoint(**row) for row in reversed(cur.fetchall())]
 
         cur.execute(
             """
@@ -159,12 +157,12 @@ def device_telemetry(
         )
         metrics = [row["metric_name"] for row in cur.fetchall()]
 
-    return {
-        "device_code": device_code,
-        "metric_name": metric_name,
-        "all_history": all_history,
-        "hours": hours,
-        "limit": limit,
-        "metrics": metrics,
-        "points": points,
-    }
+    return DeviceTelemetry(
+        device_code=device_code,
+        metric_name=metric_name,
+        all_history=all_history,
+        hours=hours,
+        limit=limit,
+        metrics=metrics,
+        points=points,
+    )
