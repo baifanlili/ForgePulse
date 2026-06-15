@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import alarms, analytics, dashboard, devices, edge, health, system
+from app.api.routers import alarms, analytics, auth, dashboard, devices, edge, health, system
 from app.core.config import get_settings
 
 
@@ -18,6 +18,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router)
+    app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
     app.include_router(dashboard.router, prefix="/api", tags=["dashboard"])
     app.include_router(devices.router, prefix="/api/devices", tags=["devices"])
     app.include_router(alarms.router, prefix="/api/alarms", tags=["alarms"])

@@ -1,7 +1,8 @@
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
+from app.core.auth import get_current_user
 from app.core.db import db_cursor
 from app.schemas.alarm import (
     AckBody,
@@ -117,7 +118,10 @@ def get_alarm(alarm_code: str) -> AlarmDetail:
 def acknowledge_alarm(
     alarm_code: str,
     body: AckBody = Body(default_factory=AckBody),
+    user: dict = Depends(get_current_user),
 ) -> AlarmDetail:
+    operator = body.operator if body.operator != "operator" else user["display_name"]
+
     with db_cursor() as cur:
         cur.execute(
             """
@@ -129,7 +133,7 @@ def acknowledge_alarm(
               AND status = 'active'
             RETURNING alarm_code
             """,
-            (body.operator, alarm_code),
+            (operator, alarm_code),
         )
         updated = cur.fetchone() is not None
         if not updated:
@@ -146,7 +150,14 @@ def acknowledge_alarm(
                 INSERT INTO alarm_events (alarm_code, event_type, operator, note)
                 VALUES (%s, 'acknowledged', %s, %s)
                 """,
-                (alarm_code, body.operator, body.note),
+                (alarm_code, operator, body.note),
+            )
+            cur.execute(
+                """
+                INSERT INTO audit_log (action, target_type, target_id, operator, detail)
+                VALUES ('alarm_acknowledge', 'alarm', %s, %s, %s::jsonb)
+                """,
+                (alarm_code, operator, '{"note":"' + body.note + '"}'),
             )
 
     return fetch_alarm(alarm_code)
@@ -156,7 +167,10 @@ def acknowledge_alarm(
 def clear_alarm(
     alarm_code: str,
     body: ClearBody = Body(default_factory=ClearBody),
+    user: dict = Depends(get_current_user),
 ) -> AlarmDetail:
+    operator = body.operator if body.operator != "operator" else user["display_name"]
+
     with db_cursor() as cur:
         cur.execute(
             """
@@ -168,7 +182,7 @@ def clear_alarm(
               AND status IN ('active', 'acknowledged')
             RETURNING alarm_code
             """,
-            (body.operator, alarm_code),
+            (operator, alarm_code),
         )
         updated = cur.fetchone() is not None
         if not updated:
@@ -185,7 +199,14 @@ def clear_alarm(
                 INSERT INTO alarm_events (alarm_code, event_type, operator, note)
                 VALUES (%s, 'cleared', %s, %s)
                 """,
-                (alarm_code, body.operator, body.note),
+                (alarm_code, operator, body.note),
+            )
+            cur.execute(
+                """
+                INSERT INTO audit_log (action, target_type, target_id, operator, detail)
+                VALUES ('alarm_clear', 'alarm', %s, %s, %s::jsonb)
+                """,
+                (alarm_code, operator, '{"note":"' + body.note + '"}'),
             )
 
     return fetch_alarm(alarm_code)

@@ -269,3 +269,30 @@ VALUES
 ALTER TABLE edge_commands
     ADD COLUMN IF NOT EXISTS executed_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS error_message TEXT;
+
+CREATE TABLE IF NOT EXISTS users (
+    id BIGSERIAL PRIMARY KEY,
+    username VARCHAR(64) NOT NULL UNIQUE,
+    password_hash VARCHAR(256) NOT NULL,
+    display_name VARCHAR(128) NOT NULL,
+    role VARCHAR(32) NOT NULL DEFAULT 'operator',
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+    id BIGSERIAL PRIMARY KEY,
+    action VARCHAR(64) NOT NULL,
+    target_type VARCHAR(64),
+    target_id VARCHAR(64),
+    operator VARCHAR(128) NOT NULL DEFAULT 'system',
+    detail JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO users (username, password_hash, display_name, role)
+VALUES
+    ('admin', '$2b$12$QMhidMZOoi2LcQ8JXG/JNORv50D/AXYlGmh8MMTDGKHhdKjmKQtEu', '管理员', 'admin'),
+    ('operator', '$2b$12$QMhidMZOoi2LcQ8JXG/JNORv50D/AXYlGmh8MMTDGKHhdKjmKQtEu', '操作员', 'operator'),
+    ('viewer', '$2b$12$QMhidMZOoi2LcQ8JXG/JNORv50D/AXYlGmh8MMTDGKHhdKjmKQtEu', '观察员', 'viewer')
+ON CONFLICT (username) DO NOTHING;

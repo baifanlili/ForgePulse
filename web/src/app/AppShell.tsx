@@ -1,6 +1,7 @@
-import { AlertOutlined, ApiOutlined, DashboardOutlined, DeploymentUnitOutlined, MonitorOutlined } from "@ant-design/icons";
-import { Layout, Menu, Space, Tag, Typography } from "antd";
+import { AlertOutlined, ApiOutlined, DashboardOutlined, DeploymentUnitOutlined, LogoutOutlined, MonitorOutlined, UserOutlined } from "@ant-design/icons";
+import { Button, Layout, Menu, Space, Tag, Typography } from "antd";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../shared/auth";
 
 const { Header, Content, Sider } = Layout;
 const { Text, Title } = Typography;
@@ -9,6 +10,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const selectedKey = location.pathname.startsWith("/devices") ? "/dashboard" : location.pathname;
+  const { displayName, role, logout } = useAuth();
 
   return (
     <Layout className="app">
@@ -38,8 +40,12 @@ export function AppShell() {
             <Text type="secondary">设备遥测、告警、良率与 SPC 的实时运营工作台</Text>
           </div>
           <Space wrap>
+            <Tag icon={<UserOutlined />}>{displayName} ({role})</Tag>
             <Tag color="cyan">MVP 数据闭环</Tag>
             <Tag color="blue">Docker Compose</Tag>
+            <Button size="small" icon={<LogoutOutlined />} onClick={() => { logout(); navigate("/login"); }}>
+              退出
+            </Button>
           </Space>
         </Header>
         <Content className="content">

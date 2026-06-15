@@ -4,8 +4,9 @@ from typing import Any
 from uuid import uuid4
 
 import paho.mqtt.client as mqtt
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.core.auth import get_current_user
 from app.core.db import db_cursor
 from app.schemas.edge import EdgeCommand, EdgeCommandRequest, EdgeGateway
 
@@ -175,7 +176,7 @@ def list_gateway_commands(gateway_id: str) -> list[EdgeCommand]:
 
 
 @router.post("/gateways/{gateway_id}/commands", response_model=EdgeCommand)
-def create_gateway_command(gateway_id: str, body: EdgeCommandRequest) -> EdgeCommand:
+def create_gateway_command(gateway_id: str, body: EdgeCommandRequest, user: dict = Depends(get_current_user)) -> EdgeCommand:
     ensure_edge_commands_table()
     command_id = f"CMD-{uuid4().hex[:12].upper()}"
     payload = {

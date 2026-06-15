@@ -159,6 +159,10 @@ def system_overview() -> SystemOverview:
             SELECT 'spc_points', COUNT(*) FROM spc_points
             UNION ALL
             SELECT 'worker_heartbeats', COUNT(*) FROM worker_heartbeats
+            UNION ALL
+            SELECT 'users', COUNT(*) FROM users
+            UNION ALL
+            SELECT 'audit_log', COUNT(*) FROM audit_log
             ORDER BY table_name
             """
         )

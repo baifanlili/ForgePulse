@@ -22,6 +22,7 @@ from app.schemas.system import (
     TableCount,
 )
 from app.schemas.edge import EdgeGateway, EdgeCommand, EdgeCommandRequest
+from app.schemas.auth import LoginRequest, TokenResponse, UserInfo
 
 __all__ = [
     "HealthResponse",

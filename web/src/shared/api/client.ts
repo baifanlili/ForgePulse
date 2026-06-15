@@ -16,9 +16,24 @@ import type {
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
 
+function getToken(): string | null {
+  try {
+    const raw = localStorage.getItem("forgepulse_auth");
+    if (!raw) return null;
+    return JSON.parse(raw).token || null;
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json", ...(init?.headers as Record<string, string> ?? {}) };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
   const response = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers,
     ...init,
   });
   if (!response.ok) {
