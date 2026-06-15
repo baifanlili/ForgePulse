@@ -160,9 +160,17 @@ export function EdgeGatewayPage() {
                   pagination={{ pageSize: 6 }}
                   columns={[
                     { title: "命令", dataIndex: "command_type" },
-                    { title: "状态", dataIndex: "status", render: (value) => <Tag color="blue">{value}</Tag> },
+                    {
+                      title: "状态",
+                      dataIndex: "status",
+                      render: (value: string) => {
+                        const color = value === "executed" ? "green" : value === "failed" ? "red" : value === "published" ? "blue" : "default";
+                        return <Tag color={color}>{value}</Tag>;
+                      },
+                    },
                     { title: "操作人", dataIndex: "operator" },
-                    { title: "发布时间", dataIndex: "published_at", render: (value) => formatDateTime(value) },
+                    { title: "发布时间", dataIndex: "published_at", render: (value: string | null) => formatDateTime(value ?? "") },
+                    { title: "执行时间", dataIndex: "executed_at", render: (value: string | null) => value ? formatDateTime(value) : "-" },
                   ]}
                   locale={{ emptyText: <Empty description="暂无命令" /> }}
                 />

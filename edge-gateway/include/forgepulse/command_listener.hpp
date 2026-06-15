@@ -15,6 +15,7 @@ struct GatewayRuntime {
     std::mutex command_mutex;
     std::string last_command_id;
     std::string last_command_type;
+    std::string last_ack_status;
     std::string control_mode{"running"};
 };
 

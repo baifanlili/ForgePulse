@@ -21,6 +21,8 @@ class EdgeCommand(BaseModel):
     operator: str
     created_at: datetime
     published_at: datetime | None = None
+    executed_at: datetime | None = None
+    error_message: str | None = None
 
 
 class EdgeGateway(BaseModel):

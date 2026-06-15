@@ -13,6 +13,7 @@ import psycopg.rows
 from worker.rules import RuleEngine
 
 MQTT_TOPIC = os.getenv("MQTT_TELEMETRY_TOPIC", "forgepulse/telemetry")
+MQTT_ACK_TOPIC = os.getenv("MQTT_ACK_TOPIC", "forgepulse/acks/+")
 HEARTBEAT_TIMEOUT_SECONDS = int(os.getenv("HEARTBEAT_TIMEOUT_SECONDS", "120"))
 HEARTBEAT_CHECK_INTERVAL = int(os.getenv("HEARTBEAT_CHECK_INTERVAL", "30"))
 WORKER_HEARTBEAT_INTERVAL = int(os.getenv("WORKER_HEARTBEAT_INTERVAL", "10"))
@@ -348,6 +349,39 @@ def health_reporter() -> None:
     conn.close()
 
 
+def handle_ack(conn: psycopg.Connection[Any], payload: dict[str, Any]) -> None:
+    command_id = str(payload.get("command_id", ""))
+    status = str(payload.get("status", "executed"))
+    error = str(payload.get("error", "")) if payload.get("error") else ""
+
+    if not command_id:
+        print("Ack missing command_id", flush=True)
+        return
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE edge_commands
+                SET status = %s,
+                    executed_at = NOW(),
+                    error_message = CASE WHEN %s = '' THEN NULL ELSE %s END
+                WHERE command_id = %s
+                  AND status = 'published'
+                RETURNING command_id
+                """,
+                (status, error, error, command_id),
+            )
+            if cur.fetchone():
+                print(f"Ack processed: command {command_id} -> {status}", flush=True)
+            else:
+                print(f"Ack not applied: command {command_id} not in published state", flush=True)
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        print(f"Failed to process ack: {exc}", flush=True)
+
+
 def heartbeat_monitor() -> None:
     conn = connect_db()
     while RUNNING:
@@ -377,7 +411,7 @@ def main() -> None:
     health_thread = Thread(target=health_reporter, daemon=True)
     health_thread.start()
 
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="forgepulse-stream-worker")
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="forgepulse-stream-worker-v2")
 
     def on_connect(
         _client: mqtt.Client,
@@ -387,16 +421,20 @@ def main() -> None:
         _properties: mqtt.Properties | None,
     ) -> None:
         if reason_code == 0:
-            print(f"Connected to MQTT, subscribing {MQTT_TOPIC}", flush=True)
+            print(f"Connected to MQTT, subscribing {MQTT_TOPIC} and {MQTT_ACK_TOPIC}", flush=True)
             _client.subscribe(MQTT_TOPIC)
+            _client.subscribe(MQTT_ACK_TOPIC)
         else:
             print(f"MQTT connection failed: {reason_code}", flush=True)
 
     def on_message(_client: mqtt.Client, _userdata: Any, msg: mqtt.MQTTMessage) -> None:
         try:
             payload = json.loads(msg.payload.decode("utf-8"))
-            persist_message(conn, rules, payload)
-            print(f"Persisted telemetry from {payload['device_code']}", flush=True)
+            if msg.topic.startswith("forgepulse/acks/"):
+                handle_ack(conn, payload)
+            else:
+                persist_message(conn, rules, payload)
+                print(f"Persisted telemetry from {payload['device_code']}", flush=True)
         except Exception as exc:
             conn.rollback()
             print(f"Failed to process MQTT message: {exc}", flush=True)

@@ -33,8 +33,17 @@ def ensure_edge_commands_table() -> None:
                 status VARCHAR(32) NOT NULL DEFAULT 'published',
                 operator VARCHAR(128) NOT NULL DEFAULT 'demo-operator',
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                published_at TIMESTAMPTZ
+                published_at TIMESTAMPTZ,
+                executed_at TIMESTAMPTZ,
+                error_message TEXT
             )
+            """
+        )
+        cur.execute(
+            """
+            ALTER TABLE edge_commands
+                ADD COLUMN IF NOT EXISTS executed_at TIMESTAMPTZ,
+                ADD COLUMN IF NOT EXISTS error_message TEXT
             """
         )
         cur.execute(
@@ -51,12 +60,16 @@ def publish_command(gateway_id: str, payload: dict[str, Any]) -> None:
     client = mqtt.Client(
         mqtt.CallbackAPIVersion.VERSION2, client_id=f"forgepulse-api-{uuid4().hex[:8]}"
     )
-    client.connect(env("MQTT_HOST", "mqtt"), mqtt_port(), keepalive=10)
-    result = client.publish(topic, json.dumps(payload, ensure_ascii=False), qos=1)
-    result.wait_for_publish(timeout=5)
-    client.disconnect()
-    if result.rc != mqtt.MQTT_ERR_SUCCESS:
-        raise RuntimeError(f"MQTT publish failed: {result.rc}")
+    try:
+        client.connect(env("MQTT_HOST", "mqtt"), mqtt_port(), keepalive=10)
+        client.loop_start()
+        result = client.publish(topic, json.dumps(payload, ensure_ascii=False), qos=1)
+        result.wait_for_publish(timeout=5)
+        if result.rc != mqtt.MQTT_ERR_SUCCESS:
+            raise RuntimeError(f"MQTT publish failed: {result.rc}")
+    finally:
+        client.loop_stop()
+        client.disconnect()
 
 
 @router.get("/gateways", response_model=list[EdgeGateway])
@@ -120,7 +133,9 @@ def list_gateways() -> list[EdgeGateway]:
                 status,
                 operator,
                 created_at,
-                published_at
+                published_at,
+                executed_at,
+                error_message
             FROM edge_commands
             ORDER BY gateway_id, created_at DESC
             """
@@ -146,7 +161,9 @@ def list_gateway_commands(gateway_id: str) -> list[EdgeCommand]:
                 status,
                 operator,
                 created_at,
-                published_at
+                published_at,
+                executed_at,
+                error_message
             FROM edge_commands
             WHERE gateway_id = %s
             ORDER BY created_at DESC
@@ -169,11 +186,6 @@ def create_gateway_command(gateway_id: str, body: EdgeCommandRequest) -> EdgeCom
         "operator": body.operator,
     }
 
-    try:
-        publish_command(gateway_id, payload)
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Command publish failed: {exc}") from exc
-
     with db_cursor() as cur:
         cur.execute(
             """
@@ -195,7 +207,9 @@ def create_gateway_command(gateway_id: str, body: EdgeCommandRequest) -> EdgeCom
                 status,
                 operator,
                 created_at,
-                published_at
+                published_at,
+                executed_at,
+                error_message
             """,
             (
                 command_id,
@@ -205,4 +219,11 @@ def create_gateway_command(gateway_id: str, body: EdgeCommandRequest) -> EdgeCom
                 body.operator,
             ),
         )
-        return EdgeCommand(**cur.fetchone())
+        command = EdgeCommand(**cur.fetchone())
+
+    try:
+        publish_command(gateway_id, payload)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Command publish failed: {exc}") from exc
+
+    return command

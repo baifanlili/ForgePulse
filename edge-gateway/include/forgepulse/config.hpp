@@ -12,6 +12,7 @@ struct GatewayConfig {
     std::string mqtt_port;
     std::string mqtt_topic;
     std::string command_topic;
+    std::string ack_topic;
     std::chrono::seconds publish_interval;
     int publish_retry_count;
     int spool_flush_limit;

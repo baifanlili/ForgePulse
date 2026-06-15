@@ -226,6 +226,8 @@ export type EdgeCommand = {
   operator: string;
   created_at: string;
   published_at: string | null;
+  executed_at: string | null;
+  error_message: string | null;
 };
 
 export type EdgeGateway = {

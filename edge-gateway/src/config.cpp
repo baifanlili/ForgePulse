@@ -39,6 +39,7 @@ GatewayConfig load_config_from_environment() {
         env_or_default("MQTT_PORT", "1883"),
         env_or_default("MQTT_TELEMETRY_TOPIC", "forgepulse/telemetry"),
         env_or_default("MQTT_COMMAND_TOPIC", "forgepulse/commands/" + gateway_id),
+        env_or_default("MQTT_ACK_TOPIC", "forgepulse/acks/" + gateway_id),
         std::chrono::seconds{interval_seconds > 0 ? interval_seconds : 5},
         env_int_or_default("EDGE_PUBLISH_RETRY_COUNT", 2),
         env_int_or_default("EDGE_SPOOL_FLUSH_LIMIT", 20),

@@ -96,7 +96,9 @@ CREATE TABLE IF NOT EXISTS edge_commands (
     status VARCHAR(32) NOT NULL DEFAULT 'published',
     operator VARCHAR(128) NOT NULL DEFAULT 'demo-operator',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    published_at TIMESTAMPTZ
+    published_at TIMESTAMPTZ,
+    executed_at TIMESTAMPTZ,
+    error_message TEXT
 );
 
 CREATE TABLE IF NOT EXISTS worker_heartbeats (
@@ -263,3 +265,7 @@ VALUES
     ('critical_dimension', NOW() - INTERVAL '3 hours', 28.9, 28.0, 29.2, 26.8),
     ('critical_dimension', NOW() - INTERVAL '2 hours', 29.4, 28.0, 29.2, 26.8),
     ('critical_dimension', NOW() - INTERVAL '1 hours', 28.7, 28.0, 29.2, 26.8);
+
+ALTER TABLE edge_commands
+    ADD COLUMN IF NOT EXISTS executed_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS error_message TEXT;
