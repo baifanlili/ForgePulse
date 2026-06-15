@@ -16,3 +16,17 @@ add_executable(
 )
 
 target_include_directories(forgepulse-edge-gateway PRIVATE include)
+
+# ---------------------------------------------------------------------------
+# Unit tests
+# ---------------------------------------------------------------------------
+add_executable(
+    test_edge
+    tests/test_edge.cpp
+    src/telemetry.cpp
+)
+
+target_include_directories(test_edge PRIVATE include)
+
+enable_testing()
+add_test(NAME edge_gateway_test COMMAND test_edge)
